@@ -74,6 +74,7 @@ const COVER_ACCENTS = {
 
 const MUSIC_DATABASE = "eclipse-music-db-v1";
 const MUSIC_STORE = "tracks";
+const MUSIC_FOLDER_STORE = "folder-access";
 
 const defaultAlbums = [
   { id: "album-after", name: "Después de las 2", mood: "noches lentas", cover: "aurora" },
@@ -111,6 +112,9 @@ let touchStart = null;
 let supabaseClient = null;
 let authenticatedUser = null;
 let friendProfiles = new Map();
+let searchFilter = "all";
+let socialRefreshTimer = null;
+let musicFolderHandle = null;
 // The onboarding flow begins with registration, then requires a sign-in.
 let authMode = "register";
 
@@ -144,6 +148,9 @@ async function syncCloudProfile() {
     id: authenticatedUser.id,
     display_name: settings.profileName,
     avatar_url: settings.profileImage || null,
+    avatar_scale: settings.profileImageScale,
+    avatar_x: settings.profileImagePositionX,
+    avatar_y: settings.profileImagePositionY,
     banner_url: settings.profileBanner || null,
     banner_scale: settings.profileBannerScale,
     banner_x: settings.profileBannerPositionX,
@@ -163,17 +170,26 @@ async function loadCloudProfile() {
   const client = getSupabaseClient();
   if (!client || !authenticatedUser) return;
   const { data, error } = await client.from("profiles").select("*").eq("id", authenticatedUser.id).maybeSingle();
-  if (error || !data) return;
-  settings.profileName = data.display_name || settings.profileName;
-  settings.profileImage = data.avatar_url || settings.profileImage;
-  settings.profileBanner = data.banner_url || settings.profileBanner;
+  if (error) return console.warn("No pudimos cargar tu perfil de Eclipse:", error.message);
+  if (!data) {
+    settings.profileName = authenticatedUser.user_metadata?.display_name || settings.profileName;
+    await syncCloudProfile();
+    return;
+  }
+  // El perfil remoto gana siempre: así un equipo nuevo no muestra datos locales viejos.
+  settings.profileName = data.display_name || authenticatedUser.user_metadata?.display_name || "Luna";
+  settings.profileImage = data.avatar_url || "";
+  settings.profileImageScale = Number(data.avatar_scale) || 1;
+  settings.profileImagePositionX = Number(data.avatar_x) || 50;
+  settings.profileImagePositionY = Number(data.avatar_y) || 50;
+  settings.profileBanner = data.banner_url || "";
   settings.profileBannerScale = Number(data.banner_scale) || 1;
   settings.profileBannerPositionX = Number(data.banner_x) || 50;
   settings.profileBannerPositionY = Number(data.banner_y) || 50;
-  settings.profileBio = data.bio || settings.profileBio;
-  settings.profileSocial = data.social_handle || settings.profileSocial;
-  settings.favoriteArtists = data.favorite_artists || settings.favoriteArtists;
-  settings.profileGallery = Array.isArray(data.gallery) ? data.gallery.slice(0, 3) : settings.profileGallery;
+  settings.profileBio = data.bio || "";
+  settings.profileSocial = data.social_handle || "";
+  settings.favoriteArtists = data.favorite_artists || "";
+  settings.profileGallery = Array.isArray(data.gallery) ? data.gallery.slice(0, 3) : [];
   if (data.friend_code) localStorage.setItem(`eclipse-friend-code-${authenticatedUser.id}`, data.friend_code);
   save(STORAGE.settings, settings);
   applySettings();
@@ -198,6 +214,7 @@ async function initialiseAuth() {
   await loadCloudProfile();
   applySettings();
   renderFriends();
+  startSocialUpdates();
   gate.hidden = true;
 }
 
@@ -205,6 +222,7 @@ function showLoginGate(message = "") {
   closeSheets();
   audio.pause();
   authenticatedUser = null;
+  if (socialRefreshTimer) window.clearInterval(socialRefreshTimer);
   authMode = "login";
   $("#authForm").reset();
   renderAuthMode();
@@ -334,10 +352,13 @@ function openMusicDatabase() {
   if (!("indexedDB" in window)) return Promise.resolve(null);
   if (databasePromise) return databasePromise;
   databasePromise = new Promise(resolve => {
-    const request = indexedDB.open(MUSIC_DATABASE, 1);
+    const request = indexedDB.open(MUSIC_DATABASE, 2);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(MUSIC_STORE)) {
         request.result.createObjectStore(MUSIC_STORE, { keyPath: "id" });
+      }
+      if (!request.result.objectStoreNames.contains(MUSIC_FOLDER_STORE)) {
+        request.result.createObjectStore(MUSIC_FOLDER_STORE, { keyPath: "id" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -358,6 +379,7 @@ async function saveUploadedTrack(track, file) {
       albumId: track.albumId,
       cover: track.cover,
       duration: track.duration,
+      sourceKey: track.sourceKey || null,
       file
     });
     transaction.oncomplete = () => resolve(true);
@@ -382,6 +404,7 @@ async function loadUploadedTracks() {
           albumId: item.albumId,
           cover: item.cover || "ink",
           duration: item.duration || "—",
+          sourceKey: item.sourceKey || null,
           src: URL.createObjectURL(item.file)
         }));
       resolve(tracks);
@@ -427,6 +450,29 @@ function escapeHtml(value = "") {
   return String(value).replace(/[&<>'"]/g, char => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
   }[char]));
+}
+
+// Eclipse accepts a small, safe color prefix such as <#F00>Manchi. The prefix
+// is stored so the color survives devices, but is never rendered as text.
+function displayName(value, fallback = "Luna") {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^<\s*#([0-9a-f]{3}|[0-9a-f]{6})\s*>\s*(.*)$/i);
+  const name = (match ? match[2] : raw).trim() || fallback;
+  return { name, color: match ? `#${match[1]}` : "" };
+}
+
+function displayNameMarkup(value, fallback = "Usuario de Eclipse") {
+  const formatted = displayName(value, fallback);
+  const color = formatted.color ? ` style="color:${formatted.color}"` : "";
+  return `<span${color}>${escapeHtml(formatted.name)}</span>`;
+}
+
+function updateNameColorPreview(value = $("#profileNameInput")?.value) {
+  const preview = $("#nameColorPreview");
+  if (!preview) return;
+  const formatted = displayName(value, "Luna");
+  preview.textContent = formatted.name;
+  preview.style.color = formatted.color;
 }
 
 function coverClass(cover) {
@@ -501,6 +547,8 @@ function formatTime(seconds) {
 function setClock() {
   const now = new Date();
   $("#clock").textContent = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const date = $("#homeDate");
+  if (date) date.textContent = `· ${now.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "short" })}`;
 }
 
 function isOwnerAccount() {
@@ -529,36 +577,64 @@ async function renderFriends() {
     return;
   }
   const { data: connections, error } = await client.from("friendships")
-    .select("id, user_id, friend_id, status")
+    .select("id, user_id, friend_id, status, created_at")
     .or(`user_id.eq.${authenticatedUser.id},friend_id.eq.${authenticatedUser.id}`);
   if (error) return console.warn("No pudimos cargar tus friends:", error.message);
   const accepted = connections.filter(item => item.status === "accepted");
   const incoming = connections.filter(item => item.status === "pending" && item.friend_id === authenticatedUser.id);
   const friendIds = accepted.map(item => item.user_id === authenticatedUser.id ? item.friend_id : item.user_id);
+  const incomingIds = incoming.map(item => item.user_id);
+  const visibleIds = [...new Set([...friendIds, ...incomingIds])];
   let profiles = [];
-  if (friendIds.length) {
-    const result = await client.from("profiles").select("id, display_name, avatar_url, banner_url, bio, favorite_artists, gallery").in("id", friendIds);
+  if (visibleIds.length) {
+    const result = await client.from("profiles").select("id, display_name, avatar_url, banner_url, bio, favorite_artists, gallery").in("id", visibleIds);
     profiles = result.data || [];
   }
   $("#friendsCount").textContent = String(accepted.length);
+  if ($("#sideFriendsCount")) $("#sideFriendsCount").textContent = String(accepted.length);
   const profileById = new Map(profiles.map(profile => [profile.id, profile]));
   friendProfiles = profileById;
   const friendsMarkup = friendIds.map(id => {
     const profile = profileById.get(id);
-    const name = profile?.display_name || "Friend de Eclipse";
+    const rawName = profile?.display_name || "Friend de Eclipse";
+    const name = displayName(rawName, "Friend de Eclipse").name;
     const avatar = profile?.avatar_url ? `<img src="${escapeHtml(profile.avatar_url)}" alt="" />` : escapeHtml(name.slice(0, 1).toUpperCase());
-    return `<button class="friend-row" type="button" data-open-friend="${id}"><span class="friend-avatar">${avatar}</span><span><strong>${escapeHtml(name)}</strong><small>En su propia órbita</small></span><i data-lucide="chevron-right"></i></button>`;
+    return `<button class="friend-row" type="button" data-open-friend="${id}"><span class="friend-avatar">${avatar}</span><span><strong>${displayNameMarkup(rawName, "Friend de Eclipse")}</strong><small>En su propia órbita</small></span><i data-lucide="chevron-right"></i></button>`;
     const artists = profile?.favorite_artists ? ` · ${escapeHtml(profile.favorite_artists.split(",")[0].trim())}` : "";
     return `<article class="friend-row"><span class="friend-avatar">${escapeHtml(name.slice(0, 1).toUpperCase())}</span><span><strong>${escapeHtml(name)}</strong><small>En su propia órbita${artists}</small></span><i data-lucide="chevron-right"></i></article>`;
   });
-  const incomingMarkup = incoming.map(item => `<article class="friend-request"><span><i data-lucide="user-plus"></i></span><p>Tienes una solicitud de amistad.<small>Acéptala para ver su perfil decorado.</small></p><span class="friend-request-actions"><button type="button" data-accept-friend="${item.id}">Aceptar</button><button class="decline" type="button" data-decline-friend="${item.id}" aria-label="Rechazar solicitud">×</button></span></article>`);
+  const incomingMarkup = incoming.map(item => {
+    const sender = profileById.get(item.user_id)?.display_name || "Alguien";
+    return `<article class="friend-request"><span><i data-lucide="user-plus"></i></span><p><b>${displayNameMarkup(sender, "Alguien")}</b> te envió una solicitud.<small>Acéptala para ver su perfil decorado.</small></p><span class="friend-request-actions"><button type="button" data-accept-friend="${item.id}">Aceptar</button><button class="decline" type="button" data-decline-friend="${item.id}" aria-label="Rechazar solicitud">×</button></span></article>`;
+  });
   list.innerHTML = [...incomingMarkup, ...friendsMarkup].join("") || `<div class="empty-state"><i data-lucide="users-round"></i><strong>Aún no tienes friends</strong><span>Comparte tu código para empezar a descubrir sus espacios.</span></div>`;
+  appNotifications = incoming.map(item => ({ id: `friend-${item.id}`, message: `${displayName(profileById.get(item.user_id)?.display_name, "Alguien").name} te envió una solicitud de amistad.`, createdAt: new Date(item.created_at || Date.now()).getTime(), read: false }));
+  renderNotifications();
+  const bell = $("#openNotifications");
+  bell?.classList.toggle("has-notification", incoming.length > 0);
+  bell?.setAttribute("aria-label", incoming.length ? `Abrir notificaciones: ${incoming.length} nuevas` : "Abrir notificaciones");
+  const { count } = await client.from("follows").select("*", { count: "exact", head: true }).eq("following_id", authenticatedUser.id);
+  if ($("#followerCount")) $("#followerCount").textContent = String(count || 0);
+  if ($("#sideFollowerCount")) $("#sideFollowerCount").textContent = String(count || 0);
   drawIcons();
+}
+
+function startSocialUpdates() {
+  if (socialRefreshTimer) window.clearInterval(socialRefreshTimer);
+  socialRefreshTimer = window.setInterval(() => authenticatedUser && renderFriends(), 30000);
+  const client = getSupabaseClient();
+  if (!client || !authenticatedUser) return;
+  client.removeAllChannels?.();
+  client.channel(`eclipse-social-${authenticatedUser.id}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "friendships", filter: `friend_id=eq.${authenticatedUser.id}` }, () => renderFriends())
+    .subscribe();
 }
 
 function openFriendProfile(friend) {
   if (!friend) return;
-  $("#friendProfileName").textContent = friend.display_name || "Friend de Eclipse";
+  const friendName = displayName(friend.display_name, "Friend de Eclipse");
+  $("#friendProfileName").textContent = friendName.name;
+  $("#friendProfileName").style.color = friendName.color;
   $("#friendProfileBio").textContent = friend.bio || "Este friend todavía no ha añadido una biografía.";
   $("#friendProfileAvatar").src = friend.avatar_url || $("#profileImage").src;
   $("#friendProfileBanner").style.backgroundImage = friend.banner_url ? `url('${friend.banner_url}')` : "";
@@ -577,10 +653,13 @@ function openFriendProfile(friend) {
 function applySettings() {
   const fallback = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='60' fill='%23e9e9e2'/%3E%3Ccircle cx='60' cy='45' r='22' fill='%23222222'/%3E%3Cpath d='M18 120c6-29 24-44 42-44s36 15 42 44' fill='%23222222'/%3E%3C/svg%3E";
   const profileImage = settings.profileImage || fallback;
-  $("#profileName").textContent = settings.profileName || "Luna";
+  const ownName = displayName(settings.profileName, "Luna");
+  $("#profileName").textContent = ownName.name;
+  $("#profileName").style.color = ownName.color;
   $("#ownerBadge").hidden = !isOwnerAccount();
   $("#friendCode").textContent = getFriendCode();
   $("#profileNameInput").value = settings.profileName || "Luna";
+  updateNameColorPreview(settings.profileName);
   $("#profileImage").src = profileImage;
   $("#profileImageLarge").src = profileImage;
   const avatarStyle = { "--avatar-scale": settings.profileImageScale, "--avatar-x": `${settings.profileImagePositionX}%`, "--avatar-y": `${settings.profileImagePositionY}%` };
@@ -772,14 +851,39 @@ function renderTracks() {
     ? tracks.slice(0, 5).map((track, index) => trackRow(track, index)).join("")
     : `<div class="empty-state">No hay canciones en esta vista todavía.</div>`;
   $("#songCount").textContent = getTracks().length;
+  if ($("#sideSongCount")) $("#sideSongCount").textContent = getTracks().length;
   $("#favoriteCount").textContent = getTracks().filter(track => favorites.has(track.id)).length;
   renderSearch();
   renderSupplementalLists();
   drawIcons();
 }
 
-function renderSearch() {
+async function renderSearch() {
   const query = $("#searchInput").value.trim().toLowerCase();
+  if (searchFilter === "people") {
+    const client = getSupabaseClient();
+    if (!query) {
+      $("#searchLabel").textContent = "Escribe un nombre de usuario para encontrar personas.";
+      $("#searchResults").innerHTML = `<div class="empty-state">Busca a alguien por su nombre de usuario.</div>`;
+      return;
+    }
+    if (!client || !authenticatedUser) return;
+    const { data, error } = await client.rpc("search_eclipse_people", { search_term: query });
+    if (error) {
+      $("#searchLabel").textContent = "No pudimos buscar personas todavía.";
+      $("#searchResults").innerHTML = `<div class="empty-state">Ejecuta la actualización de Supabase para activar la búsqueda de personas.</div>`;
+      return;
+    }
+    const people = data || [];
+    $("#searchLabel").textContent = `${people.length} ${people.length === 1 ? "persona encontrada" : "personas encontradas"}.`;
+    $("#searchResults").innerHTML = people.length ? people.map(person => {
+      const personName = displayName(person.display_name, "Usuario de Eclipse");
+      const avatar = person.avatar_url ? `<img src="${escapeHtml(person.avatar_url)}" alt="" />` : escapeHtml(personName.name.slice(0, 1).toUpperCase());
+      return `<article class="person-result"><span class="friend-avatar">${avatar}</span><span><strong>${displayNameMarkup(person.display_name, "Usuario de Eclipse")}</strong><small>${escapeHtml(person.bio || "En Eclipse")}</small><em>${Number(person.follower_count || 0)} seguidores</em></span><button type="button" class="follow-button${person.is_following ? " is-following" : ""}" data-follow-user="${escapeHtml(person.id)}">${person.is_following ? "Siguiendo" : "Seguir"}</button></article>`;
+    }).join("") : `<div class="empty-state">No encontramos personas con ese usuario.</div>`;
+    drawIcons();
+    return;
+  }
   const tracks = getTracks().filter(track => {
     const album = getAlbums().find(item => item.id === track.albumId);
     const searchable = `${track.title} ${track.artist} ${album?.name || ""}`.toLowerCase();
@@ -854,8 +958,8 @@ function renderNotifications() {
   if (!containers.length) return;
   containers.forEach(container => {
     container.innerHTML = appNotifications.length
-      ? appNotifications.map(note => `<button class="notification-item${note.read ? " is-read" : ""}" type="button" data-notification-id="${escapeHtml(note.id)}"><span>${escapeHtml(note.message)}</span><small>${formatRelativeTime(note.createdAt)}</small></button>`).join("")
-      : `<div class="empty-state">You have no new notifications.</div>`;
+      ? appNotifications.map(note => `<button class="notification-item${note.read ? " is-read" : ""}" type="button" data-notification-id="${escapeHtml(note.id)}"><span class="notification-icon">${icon("user-plus")}</span><p>${escapeHtml(note.message)}<small>${formatRelativeTime(note.createdAt)}</small></p></button>`).join("")
+      : `<div class="empty-state">No tienes notificaciones nuevas.</div>`;
   });
 }
 
@@ -1264,15 +1368,19 @@ function getUploadAlbum() {
   return getAlbums().find(album => album.id === requestedId) || getUntitledAlbum();
 }
 
-async function uploadMusic(files) {
-  const validFiles = [...files].filter(file => file.type.startsWith("audio/"));
+async function uploadMusic(files, options = {}) {
+  const validFiles = [...files].filter(isAudioFile);
   if (!validFiles.length) {
     showToast("Selecciona al menos un archivo de audio.");
     return;
   }
+  const sourceKeys = options.sourceKeys || [];
+  const entries = validFiles.map((file, index) => ({ file, sourceKey: sourceKeys[index] || null }))
+    .filter(entry => !entry.sourceKey || !sessionTracks.some(track => track.sourceKey === entry.sourceKey));
+  if (!entries.length) return 0;
   const album = getUploadAlbum();
   const existingCount = sessionTracks.length;
-  const newTracks = validFiles.map((file, index) => {
+  const newTracks = entries.map(({ file, sourceKey }, index) => {
     const name = file.name.replace(/\.[^/.]+$/, "");
     return {
       id: `upload-${Date.now()}-${index}`,
@@ -1281,10 +1389,11 @@ async function uploadMusic(files) {
       albumId: album.id,
       cover: ["ink", "mist", "cloud", "lines"][((existingCount + index) % 4)],
       duration: "—",
+      sourceKey,
       src: URL.createObjectURL(file)
     };
   });
-  const saved = await Promise.all(newTracks.map((track, index) => saveUploadedTrack(track, validFiles[index])));
+  const saved = await Promise.all(newTracks.map((track, index) => saveUploadedTrack(track, entries[index].file)));
   sessionTracks.push(...newTracks);
   renderAlbums();
   renderTracks();
@@ -1293,6 +1402,85 @@ async function uploadMusic(files) {
     showToast(`${validFiles.length} ${validFiles.length === 1 ? "canción añadida" : "canciones añadidas"} a tu biblioteca.`);
   } else {
     showToast("Las canciones están listas; algunas solo quedarán disponibles en esta sesión.");
+  }
+  return entries.length;
+}
+
+function isAudioFile(file) {
+  return file.type.startsWith("audio/") || /\.(mp3|m4a|aac|wav|flac|ogg|opus)$/i.test(file.name);
+}
+
+async function getSavedMusicFolder() {
+  const database = await openMusicDatabase();
+  if (!database) return null;
+  return new Promise(resolve => {
+    const request = database.transaction(MUSIC_FOLDER_STORE, "readonly").objectStore(MUSIC_FOLDER_STORE).get("main");
+    request.onsuccess = () => resolve(request.result?.handle || null);
+    request.onerror = () => resolve(null);
+  });
+}
+
+async function saveMusicFolder(handle) {
+  const database = await openMusicDatabase();
+  if (!database) return false;
+  return new Promise(resolve => {
+    const transaction = database.transaction(MUSIC_FOLDER_STORE, "readwrite");
+    transaction.objectStore(MUSIC_FOLDER_STORE).put({ id: "main", handle });
+    transaction.oncomplete = () => resolve(true);
+    transaction.onerror = () => resolve(false);
+  });
+}
+
+async function collectMusicFiles(folder, path = "") {
+  const found = [];
+  for await (const handle of folder.values()) {
+    const location = path ? `${path}/${handle.name}` : handle.name;
+    if (handle.kind === "directory") found.push(...await collectMusicFiles(handle, location));
+    else if (handle.kind === "file") {
+      const file = await handle.getFile();
+      if (isAudioFile(file)) found.push({ file, sourceKey: location });
+    }
+  }
+  return found;
+}
+
+async function syncMusicFolder(handle = musicFolderHandle, silent = false) {
+  if (!handle) return 0;
+  const permission = await handle.queryPermission({ mode: "read" });
+  if (permission !== "granted") return 0;
+  const files = await collectMusicFiles(handle);
+  const added = await uploadMusic(files.map(item => item.file), { sourceKeys: files.map(item => item.sourceKey) });
+  if (!silent && !added) showToast("Tu carpeta ya está sincronizada. No hay canciones nuevas.");
+  return added;
+}
+
+async function chooseMusicFolder() {
+  if (!window.showDirectoryPicker) {
+    showToast("La sincronización de carpetas funciona en Chrome o Edge de computador.");
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: "read", startIn: "music" });
+    if (await handle.requestPermission({ mode: "read" }) !== "granted") return showToast("Necesitamos permiso para leer esa carpeta.");
+    musicFolderHandle = handle;
+    await saveMusicFolder(handle);
+    const button = $("#syncMusicFolder");
+    if (button) button.classList.add("is-synced");
+    const added = await syncMusicFolder(handle);
+    if (added) showToast(`Carpeta conectada: ${added} canciones nuevas en tu biblioteca.`);
+  } catch (error) {
+    if (error?.name !== "AbortError") showToast("No pudimos conectar esa carpeta de música.");
+  }
+}
+
+async function restoreMusicFolder() {
+  if (!window.showDirectoryPicker) return;
+  musicFolderHandle = await getSavedMusicFolder();
+  if (!musicFolderHandle) return;
+  const permission = await musicFolderHandle.queryPermission({ mode: "read" });
+  if (permission === "granted") {
+    $("#syncMusicFolder")?.classList.add("is-synced");
+    await syncMusicFolder(musicFolderHandle, true);
   }
 }
 
@@ -1405,9 +1593,12 @@ function bindEvents() {
     if (!result.data.session) return setAuthStatus("Revisa tu correo para confirmar la cuenta y luego inicia sesión.");
     authenticatedUser = result.data.user;
     if (authMode === "register" && $("#authName").value.trim()) settings.profileName = $("#authName").value.trim();
-    await syncCloudProfile();
+    // Primero recuperamos la nube: nunca sobrescribas el perfil existente con
+    // los valores locales de este dispositivo al iniciar sesión.
+    await loadCloudProfile();
     applySettings();
     renderFriends();
+    startSocialUpdates();
     hideLoginGate();
   });
   // Hover sounds are available after the first deliberate interaction, which is
@@ -1422,6 +1613,8 @@ function bindEvents() {
   $("#openCustomize").addEventListener("click", () => openSheet("settingsSheet"));
   $("#desktopCustomize").addEventListener("click", () => openSheet("settingsSheet"));
   $("#openProfile").addEventListener("click", () => openSheet("profileSheet"));
+  $("#openAbout")?.addEventListener("click", () => openSheet("aboutSheet"));
+  $("#openAboutFromProfile")?.addEventListener("click", () => openSheet("aboutSheet"));
   $("#copyFriendCode").addEventListener("click", async () => {
     const code = getFriendCode();
     try {
@@ -1485,6 +1678,7 @@ function bindEvents() {
   $("#openAlbumCreator").addEventListener("click", () => openSheet("creatorSheet"));
   $("#openLibraryActions").addEventListener("click", () => openSheet("libraryActionsSheet"));
   $("#uploadMusicCta").addEventListener("click", () => $("#musicInput").click());
+  $("#syncMusicFolder")?.addEventListener("click", chooseMusicFolder);
   $("#chooseMusic").addEventListener("click", () => { closeSheets(); $("#musicInput").click(); });
   $("#chooseAlbum").addEventListener("click", () => { closeSheets(); openSheet("creatorSheet"); });
   $("#sheetBackdrop").addEventListener("click", closeSheets);
@@ -1506,6 +1700,11 @@ function bindEvents() {
   $("#quickUpload").addEventListener("click", () => $("#musicInput").click());
   $("#quickThemes").addEventListener("click", () => openSheet("settingsSheet"));
   $("#quickRadio").addEventListener("click", () => { const tracks = getTracks(); if (tracks.length) setCurrentTrack(tracks[Math.floor(Math.random() * tracks.length)], true); });
+  $("#explorePeople")?.addEventListener("click", () => {
+    switchView("search");
+    document.querySelector("[data-search-filter='people']")?.click();
+    $("#searchInput").focus();
+  });
   $("#openHistory").addEventListener("click", () => {
     switchView("library");
     document.querySelector("[data-library-view='history']")?.click();
@@ -1542,17 +1741,11 @@ function bindEvents() {
   }));
 
   $("#searchInput").addEventListener("input", renderSearch);
+  $("#profileNameInput")?.addEventListener("input", event => updateNameColorPreview(event.target.value));
   $$(".search-filter").forEach(button => button.addEventListener("click", () => {
     $$(".search-filter").forEach(item => item.classList.toggle("active", item === button));
-    const filter = button.dataset.searchFilter;
-    const input = $("#searchInput");
-    const tracks = getTracks().filter(track => {
-      if (filter === "albums") return getAlbums().some(album => album.id === track.albumId && album.name.toLowerCase().includes(input.value.trim().toLowerCase()));
-      return filter === "all" || filter === "tracks" ? `${track.title} ${track.artist}`.toLowerCase().includes(input.value.trim().toLowerCase()) : false;
-    });
-    $("#searchResults").innerHTML = tracks.length ? tracks.map((track, index) => trackRow(track, index)).join("") : `<div class="empty-state">No hay resultados en esta sección.</div>`;
-    $("#searchLabel").textContent = `${tracks.length} ${tracks.length === 1 ? "resultado" : "resultados"}.`;
-    drawIcons();
+    searchFilter = button.dataset.searchFilter;
+    renderSearch();
   }));
   $$(".library-switch").forEach(button => button.addEventListener("click", () => {
     const mode = button.dataset.libraryView;
@@ -1684,11 +1877,13 @@ function bindEvents() {
     save(STORAGE.settings, settings);
     applySettings();
   });
+  $("#profileImageScale")?.addEventListener("change", syncCloudProfile);
   ["profileImagePositionX", "profileImagePositionY"].forEach(key => {
     $(`#${key}`)?.addEventListener("input", event => {
       settings[key] = Number(event.target.value);
       save(STORAGE.settings, settings);
       applySettings();
+      syncCloudProfile();
     });
   });
   $$(".avatar-style-row [data-avatar-shape]").forEach(button => button.addEventListener("click", () => {
@@ -1704,6 +1899,7 @@ function bindEvents() {
     settings.profileAvatarShape = "circle";
     save(STORAGE.settings, settings);
     applySettings();
+    syncCloudProfile();
     showToast("Restauramos tu foto de perfil.");
   });
   [["profileBannerScale", "profileBannerScaleValue"], ["profileBannerPositionX"], ["profileBannerPositionY"]].forEach(([key, label]) => {
@@ -1712,6 +1908,7 @@ function bindEvents() {
       if (label) $(`#${label}`).textContent = `${event.target.value}%`;
       save(STORAGE.settings, settings);
       applySettings();
+      syncCloudProfile();
     });
   });
   $("#resetProfileBanner")?.addEventListener("click", () => {
@@ -1721,6 +1918,7 @@ function bindEvents() {
     settings.profileBannerPositionY = 50;
     save(STORAGE.settings, settings);
     applySettings();
+    syncCloudProfile();
   });
   $("#albumForm").addEventListener("submit", createAlbum);
   $("#albumCoverInput").addEventListener("change", event => readImage(event.target.files[0], image => {
@@ -1729,6 +1927,21 @@ function bindEvents() {
   }));
 
   document.addEventListener("click", event => {
+    const followButton = event.target.closest("[data-follow-user]");
+    if (followButton) {
+      const client = getSupabaseClient();
+      if (!client || !authenticatedUser) return;
+      followButton.disabled = true;
+      const target = followButton.dataset.followUser;
+      const request = followButton.classList.contains("is-following")
+        ? client.from("follows").delete().eq("follower_id", authenticatedUser.id).eq("following_id", target)
+        : client.from("follows").insert({ follower_id: authenticatedUser.id, following_id: target });
+      request.then(({ error }) => {
+        if (error) showToast(error.message);
+        else { showToast(followButton.classList.contains("is-following") ? "Ya no sigues a esta persona." : "Ahora sigues a esta persona."); renderSearch(); }
+      });
+      return;
+    }
     const favoriteButton = event.target.closest("[data-favorite-id]");
     if (favoriteButton) {
       event.stopPropagation();
@@ -1806,6 +2019,7 @@ async function init() {
   setInterval(setClock, 30000);
   $$(".sheet").forEach(sheet => { sheet.inert = true; });
   sessionTracks = await loadUploadedTracks();
+  await restoreMusicFolder();
   removeOrphanedFavorites();
   applySettings();
   renderAlbums();
