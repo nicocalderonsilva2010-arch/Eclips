@@ -56,7 +56,7 @@
             <section class="view active" data-view="home" aria-label="Inicio">
               <header class="app-header">
                 <div>
-                  <p class="eyebrow">MI ESPACIO</p>
+                  <p class="eyebrow">MI ESPACIO <span class="home-date" id="homeDate"></span></p>
                   <h1>Hola, <span class="profile-name-with-badge"><span id="profileName">Luna</span><span class="owner-badge" id="ownerBadge" hidden>OWNER</span></span>.</h1>
                 </div>
                 <div class="header-actions">
@@ -119,6 +119,20 @@
                 <div><p class="eyebrow">TU RITMO</p><strong>7 días en tu órbita</strong><span>Vuelve a tus favoritos o descubre algo nuevo.</span></div>
                 <button class="circle-arrow" id="openHistory" type="button" aria-label="Ver historial"><i data-lucide="arrow-up-right"></i></button>
               </section>
+
+              <aside class="home-companion" aria-label="Tu actividad en Eclipse">
+                <div class="companion-orbit"><span class="orbit-dot one"></span><span class="orbit-dot two"></span><i data-lucide="sparkles"></i></div>
+                <p class="eyebrow">TU UNIVERSO</p>
+                <h2>Pequeños momentos,<br />tu propia órbita.</h2>
+                <p class="companion-copy">Tu música, tu estética y las personas que hacen parte de tu espacio.</p>
+                <div class="companion-stats">
+                  <div><strong id="sideSongCount">0</strong><span>canciones</span></div>
+                  <div><strong id="sideFollowerCount">0</strong><span>seguidores</span></div>
+                  <div><strong id="sideFriendsCount">0</strong><span>friends</span></div>
+                </div>
+                <div class="companion-note"><i data-lucide="wand-sparkles"></i><p><b>Tip de hoy</b><span>Sube una foto o un banner para que tu perfil se sienta más tuyo.</span></p></div>
+                <button class="companion-discover" id="explorePeople" type="button">Descubrir personas <i data-lucide="arrow-up-right"></i></button>
+              </aside>
             </section>
 
             <section class="view" data-view="search" aria-label="Buscar">
@@ -128,13 +142,14 @@
               </header>
               <label class="search-field">
                 <i data-lucide="search"></i>
-                <input id="searchInput" type="search" placeholder="Canciones, artistas o álbumes" autocomplete="off" />
+                <input id="searchInput" type="search" placeholder="Canciones, artistas, álbumes o personas" autocomplete="off" />
               </label>
               <div class="search-filters" aria-label="Tipo de resultado">
                 <button class="search-filter active" type="button" data-search-filter="all">Todo</button>
                 <button class="search-filter" type="button" data-search-filter="tracks">Canciones</button>
                 <button class="search-filter" type="button" data-search-filter="albums">Álbumes</button>
                 <button class="search-filter" type="button" data-search-filter="playlists">Playlists</button>
+                <button class="search-filter" type="button" data-search-filter="people">Personas</button>
               </div>
               <p class="result-label" id="searchLabel">Todo lo que guardes aparecerá aquí.</p>
               <div class="track-list search-results" id="searchResults"></div>
@@ -166,6 +181,11 @@
                 <span><i data-lucide="music-2"></i></span>
                 <span><strong>Sube tu música</strong><small>MP3, M4A, WAV y más</small></span>
                 <i data-lucide="arrow-up-right"></i>
+              </button>
+              <button class="folder-sync-cta" id="syncMusicFolder" type="button">
+                <span><i data-lucide="folder-sync"></i></span>
+                <span><strong>Sincroniza tu carpeta de música</strong><small>Elige una carpeta y Eclipse añadirá tus canciones automáticamente.</small></span>
+                <i data-lucide="chevron-right"></i>
               </button>
             </section>
 
@@ -212,6 +232,7 @@
               <button class="tab" type="button" data-target="library"><i data-lucide="library"></i><span>Biblioteca</span></button>
               <button class="tab" type="button" data-target="friends"><i data-lucide="users-round"></i><span>Friends</span></button>
               <button class="tab tab-sheet" id="tabProfile" type="button" data-sheet="profileSheet"><i data-lucide="user-round"></i><span>Perfil</span></button>
+              <button class="about-nav-link" id="openAbout" type="button"><i data-lucide="info"></i><span>Sobre Eclipse</span></button>
             </nav>
             <select id="musicAlbumSelect" aria-label="Álbum donde guardar las canciones" hidden></select>
             <input id="musicInput" type="file" accept="audio/*" multiple hidden />
@@ -312,17 +333,22 @@
         <div class="profile-artist-preview" id="profileArtistsPreview"></div>
         <div class="profile-gallery-preview" id="profileGalleryPreview"></div>
       </section>
-      <section class="profile-media-tools" aria-label="Ajustar imagen de perfil y banner">
+      <details class="profile-media-tools" aria-label="Ajustar imagen de perfil y banner">
+        <summary><span><i data-lucide="sliders-horizontal"></i> Ajustar foto y banner</span><small>Zoom y posición</small></summary>
+        <div class="profile-media-tools-content">
         <div class="profile-tool-heading"><strong>Foto de perfil</strong><button class="clear-button" id="resetProfilePhoto" type="button">Restaurar</button></div>
         <label class="range-setting" for="profileImageScale"><span><b>Zoom</b><small id="profileImageScaleValue">100%</small></span><input id="profileImageScale" type="range" min="100" max="180" value="100" /></label>
         <div class="photo-position-grid"><label for="profileImagePositionX">Horizontal<input id="profileImagePositionX" type="range" min="0" max="100" value="50" /></label><label for="profileImagePositionY">Vertical<input id="profileImagePositionY" type="range" min="0" max="100" value="50" /></label></div>
         <div class="profile-tool-heading banner-tool-heading"><strong>Banner</strong><button class="clear-button" id="resetProfileBanner" type="button">Quitar</button></div>
         <label class="range-setting" for="profileBannerScale"><span><b>Zoom del banner</b><small id="profileBannerScaleValue">100%</small></span><input id="profileBannerScale" type="range" min="100" max="180" value="100" /></label>
         <div class="photo-position-grid"><label for="profileBannerPositionX">Horizontal<input id="profileBannerPositionX" type="range" min="0" max="100" value="50" /></label><label for="profileBannerPositionY">Vertical<input id="profileBannerPositionY" type="range" min="0" max="100" value="50" /></label></div>
-      </section>
-      <div class="profile-metrics" aria-label="Estadísticas de perfil"><div><strong id="profileTrackStat">0</strong><span>canciones</span></div><div><strong>1.2k</strong><span>escuchas</span></div><div><strong>48</strong><span>seguidores</span></div></div>
+        </div>
+      </details>
+      <div class="profile-metrics" aria-label="Estadísticas de perfil"><div><strong id="profileTrackStat">0</strong><span>canciones</span></div><div><strong>—</strong><span>escuchas</span></div><div><strong id="followerCount">0</strong><span>seguidores</span></div></div>
       <label class="input-label" for="profileNameInput">¿Cómo quieres que te saludemos?</label>
-      <input class="text-input" id="profileNameInput" maxlength="20" value="Luna" placeholder="Tu nombre" />
+      <input class="text-input" id="profileNameInput" maxlength="30" value="Luna" placeholder="Ej. &lt;#F00&gt;Manchi" />
+      <small class="name-color-help">Tip: escribe <b>&lt;#F00&gt;</b> antes de tu nombre para darle color. El código no se verá en tu perfil.</small>
+      <span class="name-color-preview">Así se verá: <b id="nameColorPreview">Luna</b></span>
       <label class="input-label" for="profileBioInput">Tu biografía</label>
       <textarea class="text-input profile-bio" id="profileBioInput" maxlength="120" placeholder="Comparte una línea sobre tu mundo musical."></textarea>
       <label class="input-label" for="profileSocialInput">Red social (opcional)</label>
@@ -333,6 +359,7 @@
       <label class="profile-gallery-upload" for="profileGalleryInput"><i data-lucide="images"></i><span>Sube hasta 3 fotos</span><small>Momentos, portadas o cualquier cosa que sea tú.</small></label>
       <input id="profileGalleryInput" type="file" accept="image/*" multiple hidden />
       <button class="primary-wide" id="saveProfile" type="button">Guardar cambios</button>
+      <button class="profile-about" id="openAboutFromProfile" type="button"><i data-lucide="info"></i> Sobre Eclipse</button>
       <button class="profile-signout" id="signOut" type="button"><i data-lucide="log-out"></i> Cerrar sesión</button>
       <input id="profileBannerInput" type="file" accept="image/*" hidden />
     </aside>
@@ -384,11 +411,7 @@
     <aside class="sheet notifications-sheet" id="notificationsSheet" aria-hidden="true" aria-label="Notificaciones">
       <div class="sheet-grabber"></div>
       <header class="settings-header"><div><p class="eyebrow">ESTÁS AL DÍA</p><h2>Notificaciones</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
-      <div class="notification-list">
-        <article class="notification-item unread"><span class="notification-icon"><i data-lucide="heart"></i></span><p><b>Marte Sol</b> guardó “Tu canción favorita”.<small>Hace 4 min</small></p></article>
-        <article class="notification-item unread"><span class="notification-icon"><i data-lucide="user-plus"></i></span><p><b>Clara O.</b> empezó a seguirte.<small>Hace 28 min</small></p></article>
-        <article class="notification-item"><span class="notification-icon"><i data-lucide="message-circle"></i></span><p>Tienes una invitación a la playlist <b>Domingos lentos</b>.<small>Ayer</small></p></article>
-      </div>
+      <div class="notification-list" id="notificationList"></div>
     </aside>
 
     <aside class="sheet friend-qr-sheet" id="friendQrSheet" aria-hidden="true" aria-label="Mi código QR de amistad">
@@ -406,6 +429,20 @@
       <section class="friend-profile-section"><p class="eyebrow">ARTISTAS QUE LE REPRESENTAN</p><div class="profile-artist-preview" id="friendProfileArtists"></div></section>
       <section class="friend-profile-section"><p class="eyebrow">SU GALERÍA</p><div class="profile-gallery-preview" id="friendProfileGallery"></div></section>
       <p class="friend-profile-note"><i data-lucide="lock-keyhole"></i> Estás viendo solo su decoración pública.</p>
+    </aside>
+
+    <aside class="sheet about-sheet" id="aboutSheet" aria-hidden="true" aria-label="Sobre Eclipse">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">EL PROYECTO</p><h2>Sobre Eclipse</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <div class="about-hero"><span class="about-mark">E</span><div><p class="eyebrow">ECLIPSE · v1.0</p><h3>Tu música,<br />tu espacio.</h3></div></div>
+      <p class="about-intro">Eclipse es un rincón personal para escuchar, ordenar y compartir la música que te acompaña.</p>
+      <section class="about-credit"><span><i data-lucide="sparkles"></i></span><div><p class="eyebrow">CREADO POR</p><strong>Nicolás Calderón · Manchi</strong><small>Un pelado colombiano de 15 años detrás del diseño, la idea y el desarrollo de Eclipse.</small></div></section>
+      <section class="about-details" aria-label="Detalles del proyecto">
+        <div><i data-lucide="heart"></i><span><b>Hecho con intención</b><small>Una experiencia musical más personal.</small></span></div>
+        <div><i data-lucide="shield-check"></i><span><b>Tu espacio</b><small>Perfiles, Friends y preferencias para ti.</small></span></div>
+        <div><i data-lucide="layers-3"></i><span><b>Construido con</b><small>HTML, CSS, JavaScript y Supabase.</small></span></div>
+      </section>
+      <p class="about-footer">Gracias por formar parte de esta órbita.</p>
     </aside>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
