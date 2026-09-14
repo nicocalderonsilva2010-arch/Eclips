@@ -206,6 +206,83 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
   .tab-bar::before, .tab-bar::after, .tab-bar .tab:first-child::after { animation: none !important; }
 }
 
+/* Mobile presentation: a compact music player with an Eclipse dynamic island. */
+@media (max-width: 700px) {
+  body { background: #292a28; }
+  .stage { padding: 10px; }
+  .phone { width: 100%; height: calc(100dvh - 20px); max-width: 420px; transform: none !important; }
+  .phone-frame { padding: 0; border-radius: 8px; background: transparent; box-shadow: 0 16px 38px #0006; }
+  .screen { border-radius: 8px; }
+  .dynamic-island { top: 19px; width: 104px; height: 29px; overflow: hidden; display: grid; place-items: center; animation: mobile-eclipse-island-shell 15s cubic-bezier(.2,.8,.2,1) infinite; }
+  .dynamic-island::after { content: "ECLIPSE"; color: #fff; font-family: "DM Sans", Arial, sans-serif; font-size: 8px; font-weight: 800; letter-spacing: .18em; opacity: 0; transform: translateY(5px); animation: mobile-eclipse-island 15s cubic-bezier(.2,.8,.2,1) infinite; }
+  .status-bar { padding-left: 20px; padding-right: 20px; }
+  .view { padding-left: 20px; padding-right: 20px; }
+  .app-header { margin-top: 4px; }
+  .app-header h1 { font-size: 29px; }
+  .daily-card { border-radius: 22px; }
+  .quick-action { min-height: 80px; }
+  .album-rail { gap: 12px; }
+  .album-card { min-width: 112px; }
+  .album-cover { width: 112px; height: 112px; }
+  .tab-bar { background: linear-gradient(to top, color-mix(in srgb, var(--paper) 96%, transparent), color-mix(in srgb, var(--paper) 72%, transparent)); }
+}
+
+@keyframes mobile-eclipse-island {
+  0%, 87%, 100% { opacity: 0; transform: translateY(5px); }
+  89% { opacity: .15; transform: translateY(3px); }
+  91%, 96% { opacity: 1; transform: translateY(0); text-shadow: 0 0 9px #ffffff66; }
+  98% { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes mobile-eclipse-island-shell {
+  0%, 88%, 100% { width: 104px; box-shadow: none; }
+  91%, 96% { width: 128px; box-shadow: 0 7px 18px #0005; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dynamic-island, .dynamic-island::after { animation: none; opacity: 1; transform: none; }
+}
+
+/* A real phone always uses the compact player composition. */
+@media (max-width: 700px) {
+  .phone[data-interface-mode="desktop"], .phone[data-interface-mode="mobile"] { width: 100%; max-width: 420px; height: calc(100dvh - 20px); transform: none !important; }
+  .phone[data-interface-mode="desktop"] .phone-frame, .phone[data-interface-mode="mobile"] .phone-frame { padding: 0; border-radius: 8px; background: transparent; }
+  .phone[data-interface-mode="desktop"] .screen, .phone[data-interface-mode="mobile"] .screen { border-radius: 8px; }
+  .phone[data-interface-mode="desktop"] .dynamic-island, .phone[data-interface-mode="mobile"] .dynamic-island { display: grid; }
+  .phone[data-interface-mode="desktop"] .status-bar, .phone[data-interface-mode="mobile"] .status-bar { display: flex; }
+  .phone[data-interface-mode="desktop"] .view, .phone[data-interface-mode="mobile"] .view { inset: 55px 0 67px; padding: 12px 20px 25px; }
+  .phone[data-interface-mode="desktop"] .tab-bar, .phone[data-interface-mode="mobile"] .tab-bar { top: auto; right: 0; width: auto; height: 62px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: none; padding: 5px 4px 7px; border: 0; border-top: 1px solid var(--line); }
+  .phone[data-interface-mode="desktop"] .tab, .phone[data-interface-mode="mobile"] .tab { display: grid; grid-template-columns: none; justify-content: center; text-align: center; gap: 2px; padding: 4px 0; font-size: 8px; border-radius: 0; }
+  .phone[data-interface-mode="desktop"] .tab::before, .phone[data-interface-mode="desktop"] .tab-bar::before, .phone[data-interface-mode="desktop"] .tab-bar::after { content: none; }
+  .phone[data-interface-mode="desktop"] .mini-player, .phone[data-interface-mode="mobile"] .mini-player { left: 10px; right: 10px; bottom: 58px; width: auto; height: 55px; }
+}
+
+/* Night theme: quiet stars and occasional diagonal trails behind the interface. */
+html[data-theme="dark"] .screen:not(.has-custom-background)::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  opacity: .62;
+  background-image:
+    radial-gradient(circle at 12% 18%, #fff 0 1px, transparent 1.8px),
+    radial-gradient(circle at 78% 13%, #fff9 0 1px, transparent 1.7px),
+    radial-gradient(circle at 62% 63%, #fff8 0 1px, transparent 1.5px),
+    radial-gradient(circle at 27% 82%, #fff7 0 1px, transparent 1.6px),
+    linear-gradient(126deg, transparent 46%, #ffffff00 47%, #ffffffb8 49%, transparent 52%),
+    linear-gradient(126deg, transparent 46%, #ffffff00 47%, #ffffff8c 49%, transparent 52%);
+  background-size: 137px 149px, 193px 211px, 239px 181px, 173px 227px, 460px 460px, 670px 670px;
+  background-position: 0 0, 30px 70px, 90px 25px, 10px 100px, -460px -180px, -670px 120px;
+  animation: eclipse-night-sky 15s linear infinite;
+}
+@keyframes eclipse-night-sky {
+  0%, 77% { background-position: 0 0, 30px 70px, 90px 25px, 10px 100px, -460px -180px, -670px 120px; }
+  84% { background-position: 0 0, 30px 70px, 90px 25px, 10px 100px, 460px 260px, 670px 510px; }
+  100% { background-position: 0 0, 30px 70px, 90px 25px, 10px 100px, 460px 260px, 670px 510px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="dark"] .screen:not(.has-custom-background)::after { animation: none; }
+}
+
 /* Project information and credits. */
 .about-nav-link { display: none; }
 .profile-about { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 11px; background: transparent; color: var(--ink); font-size: 11px; font-weight: 700; }
