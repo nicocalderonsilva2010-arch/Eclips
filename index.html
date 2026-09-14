@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f6f2" />
+    <title>Eclipse — Tu música, a tu manera</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="overrides.css" />
+    <script src="https://unpkg.com/lucide@latest" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <section class="auth-gate" id="authGate" aria-labelledby="authTitle" hidden>
+      <div class="auth-card">
+        <p class="eyebrow">ECLIPSE</p>
+        <h1 id="authTitle">Tu música,<br />tu espacio.</h1>
+        <p class="auth-copy" id="authCopy">Entra para guardar tu perfil y tu mundo musical.</p>
+        <form id="authForm">
+          <label class="input-label" for="authName" id="authNameLabel" hidden>Tu nombre</label>
+          <input class="text-input" id="authName" maxlength="30" placeholder="Tu nombre" hidden />
+          <label class="input-label" for="authEmail">Correo electrónico</label>
+          <input class="text-input" id="authEmail" type="email" autocomplete="email" required placeholder="tu@email.com" />
+          <label class="input-label" for="authPassword">Contraseña</label>
+          <input class="text-input" id="authPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="Mínimo 6 caracteres" />
+          <button class="primary-wide" id="authSubmit" type="submit">Iniciar sesión</button>
+        </form>
+        <button class="auth-switch" id="authSwitch" type="button">¿Ya tienes cuenta? Inicia sesión</button>
+        <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <main class="stage">
+      <div class="phone" id="phone">
+        <div class="phone-frame">
+          <div class="dynamic-island" aria-hidden="true"><span></span></div>
+
+          <div class="screen" id="appSurface">
+            <header class="status-bar" aria-label="Barra de estado">
+              <span id="clock">9:41</span>
+              <div class="status-icons">
+                <i data-lucide="signal-high"></i>
+                <i data-lucide="wifi"></i>
+                <i data-lucide="battery-full"></i>
+              </div>
+            </header>
+
+            <section class="view active" data-view="home" aria-label="Inicio">
+              <header class="app-header">
+                <div>
+                  <p class="eyebrow">MI ESPACIO <span class="home-date" id="homeDate"></span></p>
+                  <h1>Hola, <span class="profile-name-with-badge"><span id="profileName">Luna</span><span class="owner-badge" id="ownerBadge" hidden>OWNER</span></span>.</h1>
+                </div>
+                <div class="header-actions">
+                  <button class="desktop-customize" id="desktopCustomize" type="button"><i data-lucide="palette"></i><span>Personalizar</span></button>
+                  <button class="notification-button has-notification" id="openNotifications" type="button" aria-label="Abrir notificaciones"><i data-lucide="bell"></i><span></span></button>
+                  <button class="avatar-button" id="openProfile" type="button" aria-label="Editar perfil">
+                    <img id="profileImage" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='60' fill='%23e9e9e2'/%3E%3Ccircle cx='60' cy='45' r='22' fill='%23222222'/%3E%3Cpath d='M18 120c6-29 24-44 42-44s36 15 42 44' fill='%23222222'/%3E%3C/svg%3E" alt="Foto de perfil" />
+                    <span class="avatar-ring"></span>
+                  </button>
+                </div>
+              </header>
+
+              <button class="daily-card card-button" id="openPlayer" type="button" aria-label="Abrir reproducción actual">
+                <span class="daily-art cover-aurora" id="heroArt"><span class="record-mark"></span></span>
+                <span class="daily-copy">
+                  <span class="eyebrow">PARA ESTE MOMENTO</span>
+                  <strong id="heroTrack">Aún no suena nada</strong>
+                  <small id="heroArtist">Elige una canción que te represente</small>
+                </span>
+                <span class="round-play" id="heroPlayIcon"><i data-lucide="play"></i></span>
+              </button>
+
+              <div class="quick-actions" aria-label="Acciones rápidas">
+                <button class="quick-action" id="quickUpload" type="button"><span><i data-lucide="upload"></i></span><b>Subir</b><small>tu música</small></button>
+                <button class="quick-action" id="quickThemes" type="button"><span><i data-lucide="palette"></i></span><b>Temas</b><small>hazlo tuyo</small></button>
+                <button class="quick-action" id="quickRadio" type="button"><span><i data-lucide="radio"></i></span><b>Radio</b><small>para ti</small></button>
+              </div>
+
+              <div class="chip-row" aria-label="Filtros">
+                <button class="chip active" type="button" data-filter="all">Todo</button>
+                <button class="chip" type="button" data-filter="recent">Reciente</button>
+                <button class="chip" type="button" data-filter="favorite">Favoritos</button>
+              </div>
+
+              <section class="content-section" aria-labelledby="albumsTitle">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">COLECCIONES</p>
+                    <h2 id="albumsTitle">Tus álbumes</h2>
+                  </div>
+                  <button class="text-button" id="openAlbumCreator" type="button">Crear</button>
+                </div>
+                <div class="album-rail" id="albumRail"></div>
+              </section>
+
+              <section class="content-section recent-section" aria-labelledby="recentTitle">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">HECHO PARA TI</p>
+                    <h2 id="recentTitle">En tu órbita</h2>
+                  </div>
+                  <button class="icon-button" id="openCustomize" type="button" aria-label="Personalizar Eclipse">
+                    <i data-lucide="sliders-horizontal"></i>
+                  </button>
+                </div>
+                <div class="track-list" id="homeTrackList"></div>
+              </section>
+
+              <section class="listening-insight" aria-label="Resumen de actividad">
+                <div><p class="eyebrow">TU RITMO</p><strong>7 días en tu órbita</strong><span>Vuelve a tus favoritos o descubre algo nuevo.</span></div>
+                <button class="circle-arrow" id="openHistory" type="button" aria-label="Ver historial"><i data-lucide="arrow-up-right"></i></button>
+              </section>
+
+              <aside class="home-companion" aria-label="Tu actividad en Eclipse">
+                <div class="companion-orbit"><span class="orbit-dot one"></span><span class="orbit-dot two"></span><i data-lucide="sparkles"></i></div>
+                <p class="eyebrow">TU UNIVERSO</p>
+                <h2>Pequeños momentos,<br />tu propia órbita.</h2>
+                <p class="companion-copy">Tu música, tu estética y las personas que hacen parte de tu espacio.</p>
+                <div class="companion-stats">
+                  <div><strong id="sideSongCount">0</strong><span>canciones</span></div>
+                  <div><strong id="sideFollowerCount">0</strong><span>seguidores</span></div>
+                  <div><strong id="sideFriendsCount">0</strong><span>friends</span></div>
+                </div>
+                <div class="companion-note"><i data-lucide="wand-sparkles"></i><p><b>Tip de hoy</b><span>Sube una foto o un banner para que tu perfil se sienta más tuyo.</span></p></div>
+                <button class="companion-discover" id="explorePeople" type="button">Descubrir personas <i data-lucide="arrow-up-right"></i></button>
+              </aside>
+            </section>
+
+            <section class="view" data-view="search" aria-label="Buscar">
+              <header class="simple-view-header">
+                <p class="eyebrow">EXPLORA TU BIBLIOTECA</p>
+                <h1>Busca algo tuyo</h1>
+              </header>
+              <label class="search-field">
+                <i data-lucide="search"></i>
+                <input id="searchInput" type="search" placeholder="Canciones, artistas, álbumes o personas" autocomplete="off" />
+              </label>
+              <div class="search-filters" aria-label="Tipo de resultado">
+                <button class="search-filter active" type="button" data-search-filter="all">Todo</button>
+                <button class="search-filter" type="button" data-search-filter="tracks">Canciones</button>
+                <button class="search-filter" type="button" data-search-filter="albums">Álbumes</button>
+                <button class="search-filter" type="button" data-search-filter="playlists">Playlists</button>
+                <button class="search-filter" type="button" data-search-filter="people">Personas</button>
+              </div>
+              <p class="result-label" id="searchLabel">Todo lo que guardes aparecerá aquí.</p>
+              <div class="track-list search-results" id="searchResults"></div>
+            </section>
+
+            <section class="view" data-view="library" aria-label="Biblioteca">
+              <header class="simple-view-header library-heading">
+                <div>
+                  <p class="eyebrow">TU BIBLIOTECA</p>
+                  <h1>Todo lo que amas</h1>
+                </div>
+                <button class="add-bubble" id="openLibraryActions" type="button" aria-label="Añadir música o álbum">
+                  <i data-lucide="plus"></i>
+                </button>
+              </header>
+              <div class="library-stats">
+                <div><strong id="songCount">0</strong><span>canciones</span></div>
+                <div><strong id="albumCount">0</strong><span>álbumes</span></div>
+                <div><strong id="favoriteCount">0</strong><span>favoritas</span></div>
+              </div>
+              <div class="library-switcher" role="tablist" aria-label="Secciones de biblioteca">
+                <button class="library-switch active" type="button" data-library-view="albums">Álbumes</button>
+                <button class="library-switch" type="button" data-library-view="favorites">Favoritos</button>
+                <button class="library-switch" type="button" data-library-view="history">Historial</button>
+              </div>
+              <div class="library-albums" id="libraryAlbums"></div>
+              <div class="library-secondary-list" id="librarySecondaryList" hidden></div>
+              <button class="upload-music-cta" id="uploadMusicCta" type="button">
+                <span><i data-lucide="music-2"></i></span>
+                <span><strong>Sube tu música</strong><small>MP3, M4A, WAV y más</small></span>
+                <i data-lucide="arrow-up-right"></i>
+              </button>
+              <button class="folder-sync-cta" id="syncMusicFolder" type="button">
+                <span><i data-lucide="folder-sync"></i></span>
+                <span><strong>Sincroniza tu carpeta de música</strong><small>Elige una carpeta y Eclipse añadirá tus canciones automáticamente.</small></span>
+                <i data-lucide="chevron-right"></i>
+              </button>
+            </section>
+
+            <section class="view friends-view" data-view="friends" aria-label="Amigos">
+              <header class="simple-view-header">
+                <div>
+                  <p class="eyebrow">TU CÍRCULO</p>
+                  <h1>Friends</h1>
+                </div>
+                <span class="friends-count" id="friendsCount">0</span>
+              </header>
+              <section class="friend-code-card" aria-labelledby="friendCodeTitle">
+                <div><p class="eyebrow" id="friendCodeTitle">TU CÓDIGO</p><strong id="friendCode">ECLIPSE-0000</strong><small>Compártelo para que te agreguen.</small></div>
+                <button id="copyFriendCode" type="button" aria-label="Copiar mi código de amigo"><i data-lucide="copy"></i></button>
+              </section>
+              <section class="add-friend-card" aria-labelledby="addFriendTitle">
+                <p class="eyebrow">NUEVA CONEXIÓN</p>
+                <h2 id="addFriendTitle">Agrega a alguien</h2>
+                <p>Escribe su código de Eclipse o escanea su QR.</p>
+                <div class="friend-add-row"><input class="text-input" id="friendCodeInput" maxlength="30" placeholder="ECLIPSE-XXXX" /><button class="primary-wide" id="addFriend" type="button">Agregar</button></div>
+                <button class="friend-qr-button" id="showFriendQr" type="button"><i data-lucide="qr-code"></i> Mostrar mi QR</button>
+              </section>
+              <section class="friends-list-section" aria-labelledby="friendsListTitle">
+                <div class="section-heading"><div><p class="eyebrow">CONECTADOS</p><h2 id="friendsListTitle">Tus friends</h2></div><button class="icon-button" id="refreshFriends" type="button" aria-label="Actualizar friends"><i data-lucide="refresh-cw"></i></button></div>
+                <div class="friends-list" id="friendsList"><div class="empty-state"><i data-lucide="users-round"></i><strong>Aún no tienes friends</strong><span>Comparte tu código para empezar a descubrir sus espacios.</span></div></div>
+              </section>
+            </section>
+
+            <div class="mini-player is-empty" id="miniPlayer">
+              <button class="mini-main" id="openPlayerFromMini" type="button" aria-label="Abrir reproductor">
+                <span class="mini-art cover-ink" id="miniArt"></span>
+                <span class="mini-copy"><strong id="miniTitle">Tu música te espera</strong><small id="miniArtist">Sube una canción para comenzar</small></span>
+              </button>
+              <button class="mini-play" id="togglePlay" type="button" aria-label="Reproducir">
+                <i data-lucide="play"></i>
+              </button>
+              <span class="mini-progress"><span id="miniProgress"></span></span>
+            </div>
+
+            <nav class="tab-bar" aria-label="Navegación principal">
+              <button class="tab active" type="button" data-target="home"><i data-lucide="house"></i><span>Inicio</span></button>
+              <button class="tab" type="button" data-target="search"><i data-lucide="search"></i><span>Buscar</span></button>
+              <button class="tab" id="tabUpload" type="button"><i data-lucide="plus-circle"></i><span>Subir</span></button>
+              <button class="tab" type="button" data-target="library"><i data-lucide="library"></i><span>Biblioteca</span></button>
+              <button class="tab" type="button" data-target="friends"><i data-lucide="users-round"></i><span>Friends</span></button>
+              <button class="tab tab-sheet" id="tabProfile" type="button" data-sheet="profileSheet"><i data-lucide="user-round"></i><span>Perfil</span></button>
+              <button class="about-nav-link" id="openAbout" type="button"><i data-lucide="info"></i><span>Sobre Eclipse</span></button>
+            </nav>
+            <select id="musicAlbumSelect" aria-label="Álbum donde guardar las canciones" hidden></select>
+            <input id="musicInput" type="file" accept="audio/*" multiple hidden />
+          </div>
+        </div>
+      </div>
+      <p class="desktop-note">ECLIPSE · TU MÚSICA EN UN SOLO LUGAR</p>
+    </main>
+
+    <div class="sheet-backdrop" id="sheetBackdrop"></div>
+
+    <aside class="sheet player-sheet" id="playerSheet" aria-hidden="true" aria-label="Reproductor">
+      <div class="sheet-grabber"></div>
+      <header class="sheet-header"><button class="close-sheet" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="chevron-down"></i></button><span>REPRODUCIENDO</span><button class="more-button" type="button" aria-label="Más opciones"><i data-lucide="ellipsis"></i></button></header>
+      <div class="player-art cover-ink" id="playerArt"><span class="record-mark"></span><span class="art-glow"></span></div>
+      <div class="audio-visualizer" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="player-title-row">
+        <div><h2 id="playerTitle">Tu música te espera</h2><p id="playerArtist">Sube una canción para comenzar</p></div>
+        <button class="favorite-button" id="favoriteCurrent" type="button" aria-label="Marcar como favorita"><i data-lucide="heart"></i></button>
+      </div>
+      <input class="seek" id="seekBar" type="range" min="0" max="100" value="0" aria-label="Progreso de la canción" />
+      <div class="time-row"><span id="currentTime">0:00</span><span id="duration">0:00</span></div>
+      <div class="player-controls">
+        <button id="shuffleToggle" type="button" data-player-action="shuffle" aria-label="Aleatorio"><i data-lucide="shuffle"></i></button>
+        <button type="button" id="previousTrack" aria-label="Canción anterior"><i data-lucide="skip-back"></i></button>
+        <button class="large-play" id="togglePlaySheet" type="button" aria-label="Reproducir"><i data-lucide="play"></i></button>
+        <button type="button" id="nextTrack" aria-label="Siguiente canción"><i data-lucide="skip-forward"></i></button>
+        <button id="repeatToggle" type="button" data-player-action="repeat" aria-label="Repetir"><i data-lucide="repeat-2"></i></button>
+      </div>
+      <div class="volume-row"><i data-lucide="volume-1"></i><input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volumen" /><i data-lucide="volume-2"></i></div>
+      <div class="player-tools" aria-label="Herramientas de reproducción">
+        <button id="openLyrics" type="button" data-player-action="lyrics"><i data-lucide="mic-vocal"></i><span>Letras</span></button>
+        <button id="openQueue" type="button" data-player-action="queue"><i data-lucide="list-music"></i><span>Cola</span></button>
+        <button id="openFullScreen" type="button" data-player-action="fullscreen"><i data-lucide="maximize-2"></i><span>Expandir</span></button>
+      </div>
+    </aside>
+
+    <aside class="sheet settings-sheet" id="settingsSheet" aria-hidden="true" aria-label="Personalizar Eclipse">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">HAZLO TUYO</p><h2>Personalización</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <div class="setting-group">
+        <div class="setting-copy"><strong>Tu fondo</strong><span>Sube una imagen que te inspire.</span></div>
+        <div class="setting-actions"><label class="outline-button" for="backgroundInput"><i data-lucide="image-up"></i> Cambiar</label><button class="clear-button" id="resetBackground" type="button">Quitar</button></div>
+        <input id="backgroundInput" type="file" accept="image/*" hidden />
+      </div>
+      <div class="setting-group profile-upload-setting">
+        <div class="setting-copy"><strong>Tu foto de perfil</strong><span>Haz que este espacio se sienta tuyo.</span></div>
+        <div class="setting-actions"><label class="outline-button" for="profileInput"><i data-lucide="camera"></i> Subir foto</label></div>
+        <input id="profileInput" type="file" accept="image/*" hidden />
+      </div>
+      <section class="setting-group theme-group" aria-labelledby="themeTitle">
+        <div class="setting-copy"><strong id="themeTitle">Elige tu atmósfera</strong><span>Cambia la apariencia de Eclipse en un toque.</span></div>
+        <div class="theme-options" role="group" aria-label="Temas disponibles">
+          <button class="theme-option active" type="button" data-theme="mono"><span class="theme-swatch theme-mono"></span><b>Mono</b><small>claro</small></button>
+          <button class="theme-option" type="button" data-theme="wine"><span class="theme-swatch theme-wine"></span><b>Vino</b><small>profundo</small></button>
+          <button class="theme-option" type="button" data-theme="dark"><span class="theme-swatch theme-dark"></span><b>Noche</b><small>oscuro</small></button>
+        </div>
+        <label class="setting-toggle"><span><b>Color dinámico</b><small>Combina con la portada actual.</small></span><input id="dynamicThemeToggle" data-setting="dynamic-theme" type="checkbox" checked /><i></i></label>
+      </section>
+      <section class="setting-group" aria-labelledby="experienceTitle">
+        <div class="setting-copy"><strong id="experienceTitle">Experiencia</strong><span>Ajusta Eclipse a la forma en que escuchas.</span></div>
+        <div class="mode-selector" role="group" aria-label="Modo de interfaz">
+          <button class="mode-option active" type="button" data-setting="interface-mode" data-value="mobile"><i data-lucide="smartphone"></i> Móvil</button>
+          <button class="mode-option" type="button" data-setting="interface-mode" data-value="desktop"><i data-lucide="monitor"></i> PC</button>
+        </div>
+        <label class="range-setting" for="interfaceScale"><span><b>Tamaño de interfaz</b><small id="interfaceScaleValue">100%</small></span><input id="interfaceScale" data-setting="interface-scale" type="range" min="88" max="112" value="100" /></label>
+        <label class="setting-toggle"><span><b>Animaciones</b><small>Transiciones y visualizador.</small></span><input id="animationsToggle" data-setting="animations" type="checkbox" checked /><i></i></label>
+      </section>
+      <section class="setting-group" aria-labelledby="playbackTitle">
+        <div class="setting-copy"><strong id="playbackTitle">Reproducción</strong><span>Deja listo tu próximo momento.</span></div>
+        <label class="setting-toggle"><span><b>Reproducción automática</b><small>Continúa con la siguiente canción.</small></span><input id="autoplayToggle" data-setting="autoplay" type="checkbox" checked /><i></i></label>
+        <label class="select-setting" for="audioQuality"><span><b>Calidad de audio</b><small>Equilibrado para tu conexión.</small></span><select id="audioQuality" data-setting="audio-quality"><option value="auto">Automática</option><option value="high">Alta · 320 kbps</option><option value="data">Ahorro de datos</option></select></label>
+        <label class="setting-toggle"><span><b>Notificaciones</b><small>Likes, mensajes y estrenos.</small></span><input id="notificationsToggle" data-setting="notifications" type="checkbox" checked /><i></i></label>
+      </section>
+      <section class="setting-group" aria-labelledby="soundTitle">
+        <div class="setting-copy"><strong id="soundTitle">Sonido de interfaz</strong><span>Pequeños detalles al navegar y controlar tu música.</span></div>
+        <label class="setting-toggle"><span><b>Efectos de sonido</b><small>Toques sutiles al usar Eclipse.</small></span><input id="soundEffectsToggle" data-setting="sound-effects" type="checkbox" checked /><i></i></label>
+        <label class="range-setting" for="soundEffectsVolume"><span><b>Intensidad</b><small id="soundEffectsVolumeValue">35%</small></span><input id="soundEffectsVolume" type="range" min="0" max="100" value="35" /></label>
+      </section>
+      <section class="setting-group palette-group" aria-labelledby="paletteTitle">
+        <div class="setting-copy"><strong id="paletteTitle">Tu paleta</strong><span>Un detalle de color, completamente tuyo.</span></div>
+        <div class="palette-controls"><label><input id="accentColor" type="color" value="#141414" /><span>acento</span></label><label><input id="paperColor" type="color" value="#f6f6f2" /><span>fondo</span></label><button id="resetPalette" class="clear-button" type="button">Restaurar</button></div>
+      </section>
+      <section class="setting-group layout-group" aria-labelledby="layoutTitle">
+        <div class="setting-copy"><strong id="layoutTitle">Orden de navegación</strong><span>Usa las flechas para decidir el lugar de cada sección.</span></div>
+        <div class="nav-organizer" id="navOrganizer" aria-label="Organizar navegación"></div>
+      </section>
+    </aside>
+
+    <aside class="sheet profile-sheet" id="profileSheet" aria-hidden="true" aria-label="Editar perfil">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">ESTE ESPACIO ES TUYO</p><h2>Tu perfil</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <div class="profile-banner" id="profileBanner"><span>EN TU PROPIA ÓRBITA</span><button id="changeProfileBanner" type="button" aria-label="Cambiar banner"><i data-lucide="image-plus"></i></button></div>
+      <div class="profile-editor"><label class="profile-large" for="profileInput"><img id="profileImageLarge" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='60' fill='%23e9e9e2'/%3E%3Ccircle cx='60' cy='45' r='22' fill='%23222222'/%3E%3Cpath d='M18 120c6-29 24-44 42-44s36 15 42 44' fill='%23222222'/%3E%3C/svg%3E" alt="Tu foto de perfil" /><span><i data-lucide="camera"></i></span></label><p>Toca la foto para cambiarla</p></div>
+      <section class="profile-showcase" aria-labelledby="showcaseTitle">
+        <div class="profile-showcase-heading"><div><p class="eyebrow">TU MUNDO</p><h3 id="showcaseTitle">Lo que te representa</h3></div><i data-lucide="sparkles"></i></div>
+        <p class="profile-showcase-bio" id="profileBioPreview">Tu historia musical empieza aquí.</p>
+        <div class="profile-artist-preview" id="profileArtistsPreview"></div>
+        <div class="profile-gallery-preview" id="profileGalleryPreview"></div>
+      </section>
+      <details class="profile-media-tools" aria-label="Ajustar imagen de perfil y banner">
+        <summary><span><i data-lucide="sliders-horizontal"></i> Ajustar foto y banner</span><small>Zoom y posición</small></summary>
+        <div class="profile-media-tools-content">
+        <div class="profile-tool-heading"><strong>Foto de perfil</strong><button class="clear-button" id="resetProfilePhoto" type="button">Restaurar</button></div>
+        <label class="range-setting" for="profileImageScale"><span><b>Zoom</b><small id="profileImageScaleValue">100%</small></span><input id="profileImageScale" type="range" min="100" max="180" value="100" /></label>
+        <div class="photo-position-grid"><label for="profileImagePositionX">Horizontal<input id="profileImagePositionX" type="range" min="0" max="100" value="50" /></label><label for="profileImagePositionY">Vertical<input id="profileImagePositionY" type="range" min="0" max="100" value="50" /></label></div>
+        <div class="profile-tool-heading banner-tool-heading"><strong>Banner</strong><button class="clear-button" id="resetProfileBanner" type="button">Quitar</button></div>
+        <label class="range-setting" for="profileBannerScale"><span><b>Zoom del banner</b><small id="profileBannerScaleValue">100%</small></span><input id="profileBannerScale" type="range" min="100" max="180" value="100" /></label>
+        <div class="photo-position-grid"><label for="profileBannerPositionX">Horizontal<input id="profileBannerPositionX" type="range" min="0" max="100" value="50" /></label><label for="profileBannerPositionY">Vertical<input id="profileBannerPositionY" type="range" min="0" max="100" value="50" /></label></div>
+        </div>
+      </details>
+      <div class="profile-metrics" aria-label="Estadísticas de perfil"><div><strong id="profileTrackStat">0</strong><span>canciones</span></div><div><strong>—</strong><span>escuchas</span></div><div><strong id="followerCount">0</strong><span>seguidores</span></div></div>
+      <label class="input-label" for="profileNameInput">¿Cómo quieres que te saludemos?</label>
+      <input class="text-input" id="profileNameInput" maxlength="30" value="Luna" placeholder="Ej. &lt;#F00&gt;Manchi" />
+      <small class="name-color-help">Tip: escribe <b>&lt;#F00&gt;</b> antes de tu nombre para darle color. El código no se verá en tu perfil.</small>
+      <span class="name-color-preview">Así se verá: <b id="nameColorPreview">Luna</b></span>
+      <label class="input-label" for="profileBioInput">Tu biografía</label>
+      <textarea class="text-input profile-bio" id="profileBioInput" maxlength="120" placeholder="Comparte una línea sobre tu mundo musical."></textarea>
+      <label class="input-label" for="profileSocialInput">Red social (opcional)</label>
+      <input class="text-input" id="profileSocialInput" maxlength="50" placeholder="@tu_usuario" />
+      <label class="input-label" for="favoriteArtistsInput">Artistas que más te representan</label>
+      <input class="text-input" id="favoriteArtistsInput" maxlength="100" placeholder="Ej. Kali Uchis, Mora, Arctic Monkeys" />
+      <label class="input-label" for="profileGalleryInput">Fotos para decorar tu perfil</label>
+      <label class="profile-gallery-upload" for="profileGalleryInput"><i data-lucide="images"></i><span>Sube hasta 3 fotos</span><small>Momentos, portadas o cualquier cosa que sea tú.</small></label>
+      <input id="profileGalleryInput" type="file" accept="image/*" multiple hidden />
+      <button class="primary-wide" id="saveProfile" type="button">Guardar cambios</button>
+      <button class="profile-about" id="openAboutFromProfile" type="button"><i data-lucide="info"></i> Sobre Eclipse</button>
+      <button class="profile-signout" id="signOut" type="button"><i data-lucide="log-out"></i> Cerrar sesión</button>
+      <input id="profileBannerInput" type="file" accept="image/*" hidden />
+    </aside>
+
+    <aside class="sheet album-sheet" id="albumSheet" aria-hidden="true" aria-label="Detalle de álbum">
+      <div class="sheet-grabber"></div>
+      <header class="sheet-header"><button class="close-sheet" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="chevron-down"></i></button><span>ÁLBUM</span><button class="more-button" id="deleteAlbum" type="button" aria-label="Eliminar álbum"><i data-lucide="trash-2"></i></button></header>
+      <div class="album-detail-top"><div class="album-detail-cover cover-ink" id="albumDetailCover"></div><div><p class="eyebrow" id="albumDetailMood">COLECCIÓN</p><h2 id="albumDetailName">Mi álbum</h2><p id="albumDetailMeta">0 canciones</p></div></div>
+      <button class="primary-wide album-play-button" id="playAlbum" type="button"><i data-lucide="play"></i> Reproducir álbum</button>
+      <div class="track-list album-track-list" id="albumTrackList"></div>
+    </aside>
+
+    <aside class="sheet creator-sheet" id="creatorSheet" aria-hidden="true" aria-label="Crear álbum">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">NUEVA COLECCIÓN</p><h2>Crea un álbum</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <form id="albumForm">
+        <label class="input-label" for="albumNameInput">Nombre del álbum</label>
+        <input class="text-input" id="albumNameInput" maxlength="34" required placeholder="Por ejemplo, noches de lluvia" />
+        <label class="input-label" for="albumMoodInput">Una pequeña vibra</label>
+        <input class="text-input" id="albumMoodInput" maxlength="30" placeholder="Íntimo, alegre, para viajar…" />
+        <label class="input-label" for="albumCoverInput">Portada (opcional)</label>
+        <label class="cover-upload" for="albumCoverInput"><i data-lucide="image-plus"></i><span>Subir una portada</span></label>
+        <input id="albumCoverInput" type="file" accept="image/*" hidden />
+        <button class="primary-wide" type="submit"><i data-lucide="plus"></i> Crear álbum</button>
+      </form>
+    </aside>
+
+    <aside class="sheet action-sheet" id="libraryActionsSheet" aria-hidden="true" aria-label="Añadir a biblioteca">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">BIBLIOTECA</p><h2>¿Qué quieres hacer?</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <button class="action-option" id="chooseMusic" type="button"><span><i data-lucide="music-2"></i></span><span><strong>Subir canciones</strong><small>Escucha tus propios archivos.</small></span><i data-lucide="chevron-right"></i></button>
+      <button class="action-option" id="chooseAlbum" type="button"><span><i data-lucide="disc-3"></i></span><span><strong>Crear álbum</strong><small>Ordena tu música como quieras.</small></span><i data-lucide="chevron-right"></i></button>
+    </aside>
+
+    <aside class="sheet queue-sheet" id="queueSheet" aria-hidden="true" aria-label="Cola de reproducción">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">A CONTINUACIÓN</p><h2>Tu cola</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <div class="queue-summary"><span><i data-lucide="sparkles"></i></span><p>Tu música sigue el ritmo.<small>Reordena o elimina lo que viene después.</small></p></div>
+      <div class="track-list queue-list" id="queueList"></div>
+    </aside>
+
+    <aside class="sheet lyrics-sheet" id="lyricsSheet" aria-hidden="true" aria-label="Letras de la canción">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">LETRAS SINCRONIZADAS</p><h2 id="lyricsTrack">Sigue la canción</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <div class="lyrics-mode"><button class="active" type="button">Sincronizadas</button><button type="button">Karaoke</button></div>
+      <div class="lyrics-list" id="lyricsList"><p class="is-current">La música encuentra su lugar.</p><p>Un pulso, una historia, un momento.</p><p>Deja que la noche te acompañe.</p><p>Todo empieza cuando le das play.</p></div>
+    </aside>
+
+    <aside class="sheet notifications-sheet" id="notificationsSheet" aria-hidden="true" aria-label="Notificaciones">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">ESTÁS AL DÍA</p><h2>Notificaciones</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <div class="notification-list" id="notificationList"></div>
+    </aside>
+
+    <aside class="sheet friend-qr-sheet" id="friendQrSheet" aria-hidden="true" aria-label="Mi código QR de amistad">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">TU CÍRCULO</p><h2>Tu QR de Friends</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <div class="friend-qr-card"><img id="friendQrImage" alt="Código QR para agregarte como friend" /><strong id="friendQrCode">ECLIPSE-0000</strong><p>Tu friend puede escanearlo o escribir este código.</p></div>
+    </aside>
+
+    <aside class="sheet friend-profile-sheet" id="friendProfileSheet" aria-hidden="true" aria-label="Perfil de un friend">
+      <div class="sheet-grabber"></div>
+      <header class="sheet-header"><button class="close-sheet" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="chevron-down"></i></button><span>PERFIL DE FRIEND</span><span></span></header>
+      <div class="friend-profile-banner" id="friendProfileBanner"></div>
+      <div class="friend-profile-intro"><img id="friendProfileAvatar" alt="Foto de perfil del friend" /><div><p class="eyebrow">EN SU PROPIA ÓRBITA</p><h2 id="friendProfileName">Friend de Eclipse</h2></div></div>
+      <p class="friend-profile-bio" id="friendProfileBio">Este friend todavía no ha añadido una biografía.</p>
+      <section class="friend-profile-section"><p class="eyebrow">ARTISTAS QUE LE REPRESENTAN</p><div class="profile-artist-preview" id="friendProfileArtists"></div></section>
+      <section class="friend-profile-section"><p class="eyebrow">SU GALERÍA</p><div class="profile-gallery-preview" id="friendProfileGallery"></div></section>
+      <p class="friend-profile-note"><i data-lucide="lock-keyhole"></i> Estás viendo solo su decoración pública.</p>
+    </aside>
+
+    <aside class="sheet about-sheet" id="aboutSheet" aria-hidden="true" aria-label="Sobre Eclipse">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">EL PROYECTO</p><h2>Sobre Eclipse</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <div class="about-hero"><span class="about-mark">E</span><div><p class="eyebrow">ECLIPSE · v1.0</p><h3>Tu música,<br />tu espacio.</h3></div></div>
+      <p class="about-intro">Eclipse es un rincón personal para escuchar, ordenar y compartir la música que te acompaña.</p>
+      <section class="about-credit"><span><i data-lucide="sparkles"></i></span><div><p class="eyebrow">CREADO POR</p><strong>Nicolás Calderón · Manchi</strong><small>Un pelado colombiano de 15 años detrás del diseño, la idea y el desarrollo de Eclipse.</small></div></section>
+      <section class="about-details" aria-label="Detalles del proyecto">
+        <div><i data-lucide="heart"></i><span><b>Hecho con intención</b><small>Una experiencia musical más personal.</small></span></div>
+        <div><i data-lucide="shield-check"></i><span><b>Tu espacio</b><small>Perfiles, Friends y preferencias para ti.</small></span></div>
+        <div><i data-lucide="layers-3"></i><span><b>Construido con</b><small>HTML, CSS, JavaScript y Supabase.</small></span></div>
+      </section>
+      <p class="about-footer">Gracias por formar parte de esta órbita.</p>
+    </aside>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <audio id="audio"></audio>
+  </body>
+</html>
