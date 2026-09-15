@@ -316,10 +316,10 @@ html[data-theme="dark"] #appSurface::before {
   backdrop-filter: none;
 }
 /* Preserve the absolute positioning of views, player and mobile navigation. */
-html[data-theme="dark"] #appSurface > .status-bar,
-html[data-theme="dark"] #appSurface > .view,
-html[data-theme="dark"] #appSurface > .mini-player,
-html[data-theme="dark"] #appSurface > .tab-bar { z-index: 1; }
+html[data-theme="dark"] #appSurface > .status-bar { z-index: 2; }
+html[data-theme="dark"] #appSurface > .view { z-index: 1; }
+html[data-theme="dark"] #appSurface > .mini-player { z-index: 3; }
+html[data-theme="dark"] #appSurface > .tab-bar { z-index: 4; }
 html[data-theme="dark"] #appSurface::after {
   content: "";
   position: absolute;

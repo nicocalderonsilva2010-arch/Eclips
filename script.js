@@ -116,6 +116,7 @@ let searchFilter = "all";
 let socialRefreshTimer = null;
 let musicFolderHandle = null;
 let peopleSearchRequest = 0;
+let interfaceResizeTimer;
 // The onboarding flow begins with registration, then requires a sign-in.
 let authMode = "register";
 
@@ -725,6 +726,12 @@ function applyNavigationOrder() {
 
 function applyVisualPreferences() {
   const root = document.documentElement;
+  // Never carry a desktop layout onto a phone (or the reverse) from saved settings.
+  const deviceMode = window.matchMedia("(max-width: 700px)").matches ? "mobile" : "desktop";
+  if (settings.interfaceMode !== deviceMode) {
+    settings.interfaceMode = deviceMode;
+    save(STORAGE.settings, settings);
+  }
   const tokens = THEME_TOKENS[settings.theme] || THEME_TOKENS.mono;
   Object.entries(tokens).forEach(([property, value]) => root.style.setProperty(property, value));
   root.dataset.theme = settings.theme;
@@ -1754,7 +1761,7 @@ function bindEvents() {
   $("#shuffleToggle").addEventListener("click", toggleShuffle);
   $("#repeatToggle").addEventListener("click", cycleRepeatMode);
   $$("[data-theme]").forEach(button => button.addEventListener("click", () => { settings.theme = button.dataset.theme; save(STORAGE.settings, settings); applySettings(); showToast("Tema actualizado."); }));
-  $$("[data-setting='interface-mode']").forEach(button => button.addEventListener("click", () => { settings.interfaceMode = button.dataset.value; save(STORAGE.settings, settings); applySettings(); }));
+  $$("[data-setting='interface-mode']").forEach(button => button.addEventListener("click", () => showToast("Eclipse adapta la interfaz automáticamente a este dispositivo.")));
   $("#interfaceScale").addEventListener("input", event => { settings.interfaceScale = Number(event.target.value) / 100; $("#interfaceScaleValue").textContent = `${event.target.value}%`; save(STORAGE.settings, settings); applyVisualPreferences(); });
   ["dynamic-theme", "animations", "autoplay", "notifications", "sound-effects"].forEach(key => { const control = document.querySelector(`[data-setting='${key}']`); control?.addEventListener("change", () => { const settingKey = key.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()); settings[settingKey] = control.checked; save(STORAGE.settings, settings); applySettings(); }); });
   $("#soundEffectsVolume").addEventListener("input", event => {
@@ -2068,6 +2075,10 @@ async function init() {
   drawIcons();
   renderAuthMode();
   await initialiseAuth();
+  window.addEventListener("resize", () => {
+    window.clearTimeout(interfaceResizeTimer);
+    interfaceResizeTimer = window.setTimeout(() => applySettings(), 140);
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);
