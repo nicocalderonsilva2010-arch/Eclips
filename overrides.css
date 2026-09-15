@@ -159,6 +159,52 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
   #playerSheet .player-art { width: min(54vw, 250px); margin-bottom: 18px; }
 }
 
+/* Final mobile cascade: keep the navigation clear of device safe areas. */
+@media (max-width: 700px) {
+  #phone .view { inset: 55px 0 calc(67px + env(safe-area-inset-bottom)); padding-bottom: 30px; }
+  #phone .tab-bar { height: calc(62px + env(safe-area-inset-bottom)); padding-bottom: calc(7px + env(safe-area-inset-bottom)); }
+  #phone .mini-player { bottom: calc(58px + env(safe-area-inset-bottom)); }
+  #phone .tab { min-height: 48px; color: var(--muted); }
+  #phone .tab svg { width: 17px; height: 17px; }
+  #phone .tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #phone .tab.active { color: var(--ink); }
+  body .sheet { max-height: min(92dvh, 800px); padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 360px) {
+  .tab { font-size: 7px; }
+  .tab svg { width: 15px; height: 15px; }
+  .view { padding-left: 15px; padding-right: 15px; }
+  .friend-add-row { grid-template-columns: 1fr; }
+  .friend-add-row .primary-wide { width: 100%; }
+}
+
+/* Mobile: keep every destination and the account exit reachable on small screens. */
+.profile-header-actions { display: flex; align-items: center; gap: 4px; }
+.mobile-signout { display: none; border: 1px solid var(--line); border-radius: 9px; padding: 6px 8px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 700; }
+.mobile-signout svg { width: 14px; vertical-align: -3px; margin-right: 3px; }
+
+@media (max-width: 700px) {
+  .view { inset: 55px 0 calc(67px + env(safe-area-inset-bottom)); padding-bottom: 30px; }
+  .tab-bar { height: calc(62px + env(safe-area-inset-bottom)); padding-bottom: calc(7px + env(safe-area-inset-bottom)); }
+  .mini-player { bottom: calc(58px + env(safe-area-inset-bottom)); }
+  .tab { min-height: 48px; color: var(--muted); }
+  .tab svg { width: 17px; height: 17px; }
+  .tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tab.active { color: var(--ink); }
+  .sheet { max-height: min(92dvh, 800px); padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+  .profile-sheet .settings-header { position: sticky; top: -10px; z-index: 2; margin-left: -20px; margin-right: -20px; padding: 12px 20px 10px; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .mobile-signout { display: inline-flex; align-items: center; }
+}
+
+@media (max-width: 360px) {
+  .tab { font-size: 7px; }
+  .tab svg { width: 15px; height: 15px; }
+  .view { padding-left: 15px; padding-right: 15px; }
+  .friend-add-row { grid-template-columns: 1fr; }
+  .friend-add-row .primary-wide { width: 100%; }
+}
+
 /* Signature moment: Eclipse comes alive briefly every 15 seconds. */
 @media (min-width: 701px) {
   .tab-bar::before {
@@ -255,33 +301,51 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
   .phone[data-interface-mode="desktop"] .mini-player, .phone[data-interface-mode="mobile"] .mini-player { left: 10px; right: 10px; bottom: 58px; width: auto; height: 55px; }
 }
 
-/* Night theme: quiet stars and occasional diagonal trails behind the interface. */
-html[data-theme="dark"] .screen:not(.has-custom-background)::after {
+/* Night theme: visible, calm rain over a blue-black night sky. */
+html[data-theme="dark"] #appSurface {
+  background:
+    radial-gradient(circle at 78% -8%, rgba(73, 157, 206, .18), transparent 31%),
+    radial-gradient(circle at 4% 100%, rgba(45, 76, 119, .18), transparent 38%),
+    linear-gradient(155deg, #101927 0%, #0a111d 52%, #060a12 100%);
+}
+html[data-theme="dark"] #appSurface::before {
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(6, 12, 21, .18), rgba(6, 12, 21, .56));
+  backdrop-filter: none;
+}
+html[data-theme="dark"] #appSurface > * { position: relative; z-index: 1; }
+html[data-theme="dark"] #appSurface::after {
   content: "";
   position: absolute;
-  z-index: -1;
+  z-index: 0;
   inset: 0;
   pointer-events: none;
-  opacity: .62;
+  opacity: .3;
   background-image:
-    radial-gradient(circle at 12% 18%, #fff 0 1px, transparent 1.8px),
-    radial-gradient(circle at 78% 13%, #fff9 0 1px, transparent 1.7px),
-    radial-gradient(circle at 62% 63%, #fff8 0 1px, transparent 1.5px),
-    radial-gradient(circle at 27% 82%, #fff7 0 1px, transparent 1.6px),
-    linear-gradient(126deg, transparent 46%, #ffffff00 47%, #ffffffb8 49%, transparent 52%),
-    linear-gradient(126deg, transparent 46%, #ffffff00 47%, #ffffff8c 49%, transparent 52%);
-  background-size: 137px 149px, 193px 211px, 239px 181px, 173px 227px, 460px 460px, 670px 670px;
-  background-position: 0 0, 30px 70px, 90px 25px, 10px 100px, -460px -180px, -670px 120px;
-  animation: eclipse-night-sky 15s linear infinite;
+    linear-gradient(112deg, transparent 47%, rgba(174, 226, 255, .22) 48%, rgba(174, 226, 255, .22) 48.7%, transparent 49.7%),
+    linear-gradient(112deg, transparent 47%, rgba(116, 195, 235, .14) 48%, rgba(116, 195, 235, .14) 48.6%, transparent 49.6%),
+    linear-gradient(112deg, transparent 47%, rgba(222, 244, 255, .1) 48%, rgba(222, 244, 255, .1) 48.5%, transparent 49.5%);
+  background-size: 137px 224px, 211px 310px, 337px 420px;
+  background-position: 12px -224px, 81px -310px, 162px -420px;
+  animation: eclipse-night-rain 3.4s linear infinite;
 }
-@keyframes eclipse-night-sky {
-  0%, 77% { background-position: 0 0, 30px 70px, 90px 25px, 10px 100px, -460px -180px, -670px 120px; }
-  84% { background-position: 0 0, 30px 70px, 90px 25px, 10px 100px, 460px 260px, 670px 510px; }
-  100% { background-position: 0 0, 30px 70px, 90px 25px, 10px 100px, 460px 260px, 670px 510px; }
+@keyframes eclipse-night-rain {
+  to { background-position: 112px 224px, 252px 310px, 358px 420px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-theme="dark"] .screen:not(.has-custom-background)::after { animation: none; }
+  html[data-theme="dark"] #appSurface::after { animation: none; }
 }
+
+html[data-theme="dark"] .quick-action,
+html[data-theme="dark"] .search-field,
+html[data-theme="dark"] .library-album-row,
+html[data-theme="dark"] .add-friend-card,
+html[data-theme="dark"] .friends-list,
+html[data-theme="dark"] .notification-button {
+  background: rgba(17, 31, 47, .62);
+  box-shadow: none;
+}
+html[data-theme="dark"] .daily-card { box-shadow: 0 14px 28px rgba(0, 0, 0, .28); }
 
 /* Project information and credits. */
 .about-nav-link { display: none; }

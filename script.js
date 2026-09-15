@@ -58,8 +58,8 @@ const THEME_TOKENS = {
     "--muted": "#e2a2aa", "--line": "rgba(255, 230, 228, 0.16)", "--glass": "rgba(91, 8, 22, 0.78)", "--accent": "#ff4056"
   },
   dark: {
-    "--paper": "#110407", "--paper-soft": "#21070d", "--ink": "#fff4f2",
-    "--muted": "#c78f96", "--line": "rgba(255, 225, 222, 0.14)", "--glass": "rgba(18, 4, 8, 0.82)", "--accent": "#d91f39"
+    "--paper": "#0b1220", "--paper-soft": "#121d2d", "--ink": "#edf5ff",
+    "--muted": "#9dafc4", "--line": "rgba(189, 215, 242, 0.13)", "--glass": "rgba(11, 18, 32, 0.78)", "--accent": "#6cc5e8"
   }
 };
 
@@ -115,6 +115,7 @@ let friendProfiles = new Map();
 let searchFilter = "all";
 let socialRefreshTimer = null;
 let musicFolderHandle = null;
+let peopleSearchRequest = 0;
 // The onboarding flow begins with registration, then requires a sign-in.
 let authMode = "register";
 
@@ -171,13 +172,18 @@ async function loadCloudProfile() {
   if (!client || !authenticatedUser) return;
   const { data, error } = await client.from("profiles").select("*").eq("id", authenticatedUser.id).maybeSingle();
   if (error) return console.warn("No pudimos cargar tu perfil de Eclipse:", error.message);
+  const accountName = String(authenticatedUser.user_metadata?.display_name || "").trim();
   if (!data) {
-    settings.profileName = authenticatedUser.user_metadata?.display_name || settings.profileName;
+    settings.profileName = accountName || settings.profileName;
     await syncCloudProfile();
     return;
   }
   // El perfil remoto gana siempre: así un equipo nuevo no muestra datos locales viejos.
-  settings.profileName = data.display_name || authenticatedUser.user_metadata?.display_name || "Luna";
+  // "Luna" was the old visual placeholder. Do not let it replace the name
+  // a person chose when creating their account.
+  settings.profileName = data.display_name && !(data.display_name === "Luna" && accountName && accountName !== "Luna")
+    ? data.display_name
+    : accountName || "Luna";
   settings.profileImage = data.avatar_url || "";
   settings.profileImageScale = Number(data.avatar_scale) || 1;
   settings.profileImagePositionX = Number(data.avatar_x) || 50;
@@ -216,6 +222,7 @@ async function initialiseAuth() {
   renderFriends();
   startSocialUpdates();
   gate.hidden = true;
+  openFriendLinkIfPresent();
 }
 
 function showLoginGate(message = "") {
@@ -551,12 +558,6 @@ function setClock() {
   if (date) date.textContent = `· ${now.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "short" })}`;
 }
 
-function isOwnerAccount() {
-  const configuredEmail = window.ECLIPSE_SUPABASE?.ownerEmail?.trim().toLowerCase();
-  const signedInEmail = authenticatedUser?.email?.trim().toLowerCase();
-  return Boolean(configuredEmail && !configuredEmail.startsWith("TU_") && signedInEmail === configuredEmail);
-}
-
 function getFriendCode() {
   const key = `eclipse-friend-code-${authenticatedUser?.id || "local"}`;
   let code = localStorage.getItem(key);
@@ -566,6 +567,26 @@ function getFriendCode() {
     localStorage.setItem(key, code);
   }
   return code;
+}
+
+function normalizeFriendCode(value = "") {
+  const raw = String(value).trim().toUpperCase().replace(/\s+/g, "");
+  const match = raw.match(/ECLIPSE-([A-Z0-9]{4,30})/);
+  return match ? `ECLIPSE-${match[1]}` : raw;
+}
+
+function getFriendShareLink() {
+  const url = new URL(window.location.href);
+  url.searchParams.set("friend", getFriendCode());
+  return url.toString();
+}
+
+function openFriendLinkIfPresent() {
+  const code = normalizeFriendCode(new URLSearchParams(window.location.search).get("friend"));
+  if (!code || !authenticatedUser || !$("#friendCodeInput")) return;
+  $("#friendCodeInput").value = code;
+  switchView("friends");
+  showToast("Código de amistad listo. Confirma para enviar la solicitud.");
 }
 
 async function renderFriends() {
@@ -656,7 +677,6 @@ function applySettings() {
   const ownName = displayName(settings.profileName, "Luna");
   $("#profileName").textContent = ownName.name;
   $("#profileName").style.color = ownName.color;
-  $("#ownerBadge").hidden = !isOwnerAccount();
   $("#friendCode").textContent = getFriendCode();
   $("#profileNameInput").value = settings.profileName || "Luna";
   updateNameColorPreview(settings.profileName);
@@ -861,6 +881,7 @@ function renderTracks() {
 async function renderSearch() {
   const query = $("#searchInput").value.trim().toLowerCase();
   if (searchFilter === "people") {
+    const requestId = ++peopleSearchRequest;
     const client = getSupabaseClient();
     if (!query) {
       $("#searchLabel").textContent = "Escribe un nombre de usuario para encontrar personas.";
@@ -869,6 +890,7 @@ async function renderSearch() {
     }
     if (!client || !authenticatedUser) return;
     const { data, error } = await client.rpc("search_eclipse_people", { search_term: query });
+    if (requestId !== peopleSearchRequest) return;
     if (error) {
       $("#searchLabel").textContent = "No pudimos buscar personas todavía.";
       $("#searchResults").innerHTML = `<div class="empty-state">Ejecuta la actualización de Supabase para activar la búsqueda de personas.</div>`;
@@ -1600,6 +1622,7 @@ function bindEvents() {
     renderFriends();
     startSocialUpdates();
     hideLoginGate();
+    openFriendLinkIfPresent();
   });
   // Hover sounds are available after the first deliberate interaction, which is
   // the only way to comply with browser audio policies.
@@ -1625,8 +1648,9 @@ function bindEvents() {
     }
   });
   $("#addFriend").addEventListener("click", async () => {
-    const code = $("#friendCodeInput").value.trim().toUpperCase();
+    const code = normalizeFriendCode($("#friendCodeInput").value);
     if (!code) return showToast("Escribe el código de tu friend.");
+    if (!/^ECLIPSE-[A-Z0-9]{4,30}$/.test(code)) return showToast("Revisa el código: debe empezar por ECLIPSE-.");
     if (code === getFriendCode()) return showToast("Ese es tu propio código.");
     const client = getSupabaseClient();
     if (!client || !authenticatedUser) return showToast("Inicia sesión para agregar friends.");
@@ -1662,7 +1686,7 @@ function bindEvents() {
     const image = $("#friendQrImage");
     if (window.QRCode?.toDataURL) {
       try {
-        image.src = await window.QRCode.toDataURL(code, { width: 240, margin: 2, color: { dark: "#141414", light: "#f6f6f2" } });
+        image.src = await window.QRCode.toDataURL(getFriendShareLink(), { width: 240, margin: 2, color: { dark: "#141414", light: "#f6f6f2" } });
       } catch {
         image.removeAttribute("src");
         showToast("No pudimos generar el QR. Usa el código de arriba.");
@@ -1856,20 +1880,21 @@ function bindEvents() {
     }));
     event.target.value = "";
   });
-  $("#signOut").addEventListener("click", async () => {
-    const button = $("#signOut");
-    button.disabled = true;
+  const closeSession = async event => {
+    const button = event.currentTarget;
+    $$("#signOut, #mobileSignOut").forEach(item => { item.disabled = true; });
     const client = getSupabaseClient();
     if (client) {
       const { error } = await client.auth.signOut();
       if (error) {
-        button.disabled = false;
+        $$("#signOut, #mobileSignOut").forEach(item => { item.disabled = false; });
         return showToast(error.message);
       }
     }
-    button.disabled = false;
+    $$("#signOut, #mobileSignOut").forEach(item => { item.disabled = false; });
     showLoginGate("Sesión cerrada. Inicia sesión para volver a entrar.");
-  });
+  };
+  $$("#signOut, #mobileSignOut").forEach(button => button.addEventListener("click", closeSession));
   $("#profileImageScale")?.addEventListener("input", event => {
     settings.profileImageScale = Number(event.target.value) / 100;
     const valueLabel = $("#profileImageScaleValue");

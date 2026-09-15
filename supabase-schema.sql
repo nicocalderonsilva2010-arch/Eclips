@@ -16,6 +16,11 @@ alter table public.profiles add column if not exists social_handle text;
 alter table public.profiles add column if not exists favorite_artists text;
 alter table public.profiles add column if not exists gallery jsonb default '[]'::jsonb;
 alter table public.profiles add column if not exists friend_code text unique;
+-- Estos tres campos los guarda el cliente al editar la foto. Sin ellos el
+-- upsert completo falla y, en consecuencia, tampoco se guarda el código.
+alter table public.profiles add column if not exists avatar_scale numeric default 1;
+alter table public.profiles add column if not exists avatar_x integer default 50;
+alter table public.profiles add column if not exists avatar_y integer default 50;
 
 -- Se crea antes de las políticas de perfiles porque estas consultan amistades.
 create table if not exists public.friendships (
@@ -97,6 +102,60 @@ end;
 $$;
 
 grant execute on function public.send_friend_request(text) to authenticated;
+
+-- Seguimientos y búsqueda de personas. La búsqueda es una función segura:
+-- devuelve solamente datos públicos de perfil, incluso con RLS activado.
+create table if not exists public.follows (
+  follower_id uuid not null references auth.users(id) on delete cascade,
+  following_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (follower_id, following_id),
+  check (follower_id <> following_id)
+);
+
+alter table public.follows enable row level security;
+grant select, insert, delete on public.follows to authenticated;
+
+drop policy if exists "Users can view follows" on public.follows;
+create policy "Users can view follows" on public.follows for select to authenticated
+using (true);
+drop policy if exists "Users can follow from their own account" on public.follows;
+create policy "Users can follow from their own account" on public.follows for insert to authenticated
+with check ((select auth.uid()) = follower_id);
+drop policy if exists "Users can unfollow from their own account" on public.follows;
+create policy "Users can unfollow from their own account" on public.follows for delete to authenticated
+using ((select auth.uid()) = follower_id);
+
+create or replace function public.search_eclipse_people(search_term text)
+returns table (
+  id uuid,
+  display_name text,
+  avatar_url text,
+  bio text,
+  follower_count bigint,
+  is_following boolean
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select p.id,
+         p.display_name,
+         p.avatar_url,
+         p.bio,
+         (select count(*) from public.follows f where f.following_id = p.id) as follower_count,
+         exists (
+           select 1 from public.follows f
+           where f.follower_id = auth.uid() and f.following_id = p.id
+         ) as is_following
+  from public.profiles p
+  where p.id <> auth.uid()
+    and coalesce(p.display_name, '') ilike '%' || trim(search_term) || '%'
+  order by p.updated_at desc nulls last
+  limit 30;
+$$;
+
+grant execute on function public.search_eclipse_people(text) to authenticated;
 
 drop policy if exists "Users can update their own Eclipse profile" on public.profiles;
 create policy "Users can update their own Eclipse profile"

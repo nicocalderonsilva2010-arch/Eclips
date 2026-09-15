@@ -57,7 +57,7 @@
               <header class="app-header">
                 <div>
                   <p class="eyebrow">MI ESPACIO <span class="home-date" id="homeDate"></span></p>
-                  <h1>Hola, <span class="profile-name-with-badge"><span id="profileName">Luna</span><span class="owner-badge" id="ownerBadge" hidden>OWNER</span></span>.</h1>
+                  <h1>Hola, <span id="profileName">Luna</span>.</h1>
                 </div>
                 <div class="header-actions">
                   <button class="desktop-customize" id="desktopCustomize" type="button"><i data-lucide="palette"></i><span>Personalizar</span></button>
@@ -324,7 +324,7 @@
 
     <aside class="sheet profile-sheet" id="profileSheet" aria-hidden="true" aria-label="Editar perfil">
       <div class="sheet-grabber"></div>
-      <header class="settings-header"><div><p class="eyebrow">ESTE ESPACIO ES TUYO</p><h2>Tu perfil</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <header class="settings-header"><div><p class="eyebrow">ESTE ESPACIO ES TUYO</p><h2>Tu perfil</h2></div><div class="profile-header-actions"><button class="mobile-signout" id="mobileSignOut" type="button"><i data-lucide="log-out"></i><span>Salir</span></button><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></div></header>
       <div class="profile-banner" id="profileBanner"><span>EN TU PROPIA ÓRBITA</span><button id="changeProfileBanner" type="button" aria-label="Cambiar banner"><i data-lucide="image-plus"></i></button></div>
       <div class="profile-editor"><label class="profile-large" for="profileInput"><img id="profileImageLarge" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='60' fill='%23e9e9e2'/%3E%3Ccircle cx='60' cy='45' r='22' fill='%23222222'/%3E%3Cpath d='M18 120c6-29 24-44 42-44s36 15 42 44' fill='%23222222'/%3E%3C/svg%3E" alt="Tu foto de perfil" /><span><i data-lucide="camera"></i></span></label><p>Toca la foto para cambiarla</p></div>
       <section class="profile-showcase" aria-labelledby="showcaseTitle">
@@ -417,7 +417,7 @@
     <aside class="sheet friend-qr-sheet" id="friendQrSheet" aria-hidden="true" aria-label="Mi código QR de amistad">
       <div class="sheet-grabber"></div>
       <header class="settings-header"><div><p class="eyebrow">TU CÍRCULO</p><h2>Tu QR de Friends</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
-      <div class="friend-qr-card"><img id="friendQrImage" alt="Código QR para agregarte como friend" /><strong id="friendQrCode">ECLIPSE-0000</strong><p>Tu friend puede escanearlo o escribir este código.</p></div>
+      <div class="friend-qr-card"><img id="friendQrImage" alt="Código QR para agregarte como friend" /><strong id="friendQrCode">ECLIPSE-0000</strong><p>Al escanearlo se abrirá Eclipse con tu código listo para enviar la solicitud.</p></div>
     </aside>
 
     <aside class="sheet friend-profile-sheet" id="friendProfileSheet" aria-hidden="true" aria-label="Perfil de un friend">
