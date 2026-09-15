@@ -198,14 +198,14 @@
                 <span class="friends-count" id="friendsCount">0</span>
               </header>
               <section class="friend-code-card" aria-labelledby="friendCodeTitle">
-                <div><p class="eyebrow" id="friendCodeTitle">TU CÓDIGO</p><strong id="friendCode">ECLIPSE-0000</strong><small>Compártelo para que te agreguen.</small></div>
+                <div><p class="eyebrow" id="friendCodeTitle">TU CÓDIGO</p><strong id="friendCode">00000000</strong><small>Compártelo para que te agreguen.</small></div>
                 <button id="copyFriendCode" type="button" aria-label="Copiar mi código de amigo"><i data-lucide="copy"></i></button>
               </section>
               <section class="add-friend-card" aria-labelledby="addFriendTitle">
                 <p class="eyebrow">NUEVA CONEXIÓN</p>
                 <h2 id="addFriendTitle">Agrega a alguien</h2>
-                <p>Escribe su código de Eclipse o escanea su QR.</p>
-                <div class="friend-add-row"><input class="text-input" id="friendCodeInput" maxlength="30" placeholder="ECLIPSE-XXXX" /><button class="primary-wide" id="addFriend" type="button">Agregar</button></div>
+                <p>Escribe su código o escanea su QR.</p>
+                <div class="friend-add-row"><input class="text-input" id="friendCodeInput" maxlength="30" placeholder="Ej. 459786CA" /><button class="primary-wide" id="addFriend" type="button">Agregar</button></div>
                 <button class="friend-qr-button" id="showFriendQr" type="button"><i data-lucide="qr-code"></i> Mostrar mi QR</button>
               </section>
               <section class="friends-list-section" aria-labelledby="friendsListTitle">
@@ -361,6 +361,7 @@
       <button class="primary-wide" id="saveProfile" type="button">Guardar cambios</button>
       <button class="profile-about" id="openAboutFromProfile" type="button"><i data-lucide="info"></i> Sobre Eclipse</button>
       <button class="profile-signout" id="signOut" type="button"><i data-lucide="log-out"></i> Cerrar sesión</button>
+      <button class="profile-signout danger" id="deleteAccount" type="button"><i data-lucide="trash-2"></i> Eliminar mi cuenta</button>
       <input id="profileBannerInput" type="file" accept="image/*" hidden />
     </aside>
 

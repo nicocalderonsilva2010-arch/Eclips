@@ -564,7 +564,7 @@ function getFriendCode() {
   let code = localStorage.getItem(key);
   if (!code) {
     const seed = (authenticatedUser?.id || crypto.randomUUID()).replace(/[^a-z0-9]/gi, "").slice(-8).toUpperCase();
-    code = `ECLIPSE-${seed}`;
+    code = seed;
     localStorage.setItem(key, code);
   }
   return code;
@@ -572,8 +572,8 @@ function getFriendCode() {
 
 function normalizeFriendCode(value = "") {
   const raw = String(value).trim().toUpperCase().replace(/\s+/g, "");
-  const match = raw.match(/ECLIPSE-([A-Z0-9]{4,30})/);
-  return match ? `ECLIPSE-${match[1]}` : raw;
+  const match = raw.match(/(?:ECLIPSE-)?([A-Z0-9]{4,30})/);
+  return match ? match[1] : raw;
 }
 
 function getFriendShareLink() {
@@ -1659,7 +1659,7 @@ function bindEvents() {
   $("#addFriend").addEventListener("click", async () => {
     const code = normalizeFriendCode($("#friendCodeInput").value);
     if (!code) return showToast("Escribe el código de tu friend.");
-    if (!/^ECLIPSE-[A-Z0-9]{4,30}$/.test(code)) return showToast("Revisa el código: debe empezar por ECLIPSE-.");
+    if (!/^[A-Z0-9]{4,30}$/.test(code)) return showToast("Revisa el código de tu friend.");
     if (code === getFriendCode()) return showToast("Ese es tu propio código.");
     const client = getSupabaseClient();
     if (!client || !authenticatedUser) return showToast("Inicia sesión para agregar friends.");
@@ -1916,6 +1916,20 @@ function bindEvents() {
     showLoginGate("Sesión cerrada. Inicia sesión para volver a entrar.");
   };
   $$("#signOut, #mobileSignOut").forEach(button => button.addEventListener("click", closeSession));
+  $("#deleteAccount")?.addEventListener("click", async () => {
+    const email = window.prompt("Escribe tu correo para confirmar que quieres borrar tu cuenta:");
+    if (!email || email.trim().toLowerCase() !== authenticatedUser?.email?.toLowerCase()) return showToast("El correo no coincide. No se borró nada.");
+    const password = window.prompt("Escribe tu contraseña. Esta acción elimina tu cuenta y todos tus datos:");
+    if (!password) return;
+    const client = getSupabaseClient();
+    const { error: authError } = await client.auth.signInWithPassword({ email: email.trim(), password });
+    if (authError) return showToast("No pudimos confirmar tu contraseña.");
+    if (!window.confirm("Última confirmación: se eliminarán tu cuenta, perfil, friends y datos. ¿Continuar?")) return;
+    const { error } = await client.rpc("delete_my_eclipse_account");
+    if (error) return showToast(error.message);
+    await client.auth.signOut();
+    showLoginGate("Tu cuenta y tus datos fueron eliminados.");
+  });
   $("#profileImageScale")?.addEventListener("input", event => {
     settings.profileImageScale = Number(event.target.value) / 100;
     const valueLabel = $("#profileImageScaleValue");

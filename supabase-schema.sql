@@ -157,6 +157,22 @@ $$;
 
 grant execute on function public.search_eclipse_people(text) to authenticated;
 
+-- Se invoca únicamente después de reautenticar con correo y contraseña en la app.
+-- El borrado de auth.users activa las cascadas de perfiles, friends y follows.
+create or replace function public.delete_my_eclipse_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if auth.uid() is null then raise exception 'Debes iniciar sesión'; end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+revoke all on function public.delete_my_eclipse_account() from public;
+grant execute on function public.delete_my_eclipse_account() to authenticated;
+
 drop policy if exists "Users can update their own Eclipse profile" on public.profiles;
 create policy "Users can update their own Eclipse profile"
 on public.profiles for update to authenticated
