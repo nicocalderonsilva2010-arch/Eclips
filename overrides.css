@@ -91,13 +91,14 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 .friends-list .empty-state svg { width: 22px; }
 .friends-list .empty-state strong { color: var(--ink); font-size: 12px; }
 .friends-list .empty-state span { max-width: 210px; }
-.friend-row { display: grid; grid-template-columns: 38px 1fr 16px; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line); }
-.friend-row { width: 100%; border-top: 0; border-right: 0; border-left: 0; background: transparent; text-align: left; color: inherit; }
-.friend-row:hover { background: var(--paper-soft); }
+.friend-row { display: grid; grid-template-columns: minmax(0, 1fr) 30px; align-items: center; gap: 5px; padding: 4px; border-bottom: 1px solid var(--line); }
+.friend-open { width: 100%; display: grid; grid-template-columns: 38px 1fr 16px; align-items: center; gap: 10px; padding: 7px 2px; border: 0; border-radius: 10px; background: transparent; text-align: left; color: inherit; }
+.friend-open:hover { background: var(--paper-soft); }
 .friend-row strong, .friend-row small { display: block; }
 .friend-row strong { font-size: 12px; }
 .friend-row small { margin-top: 2px; color: var(--muted); font-size: 9px; }
-.friend-row > svg { width: 15px; color: var(--muted); }
+.friend-open > svg { width: 15px; color: var(--muted); }
+.remove-friend { display: grid; place-items: center; width: 29px; height: 29px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); opacity: .7; }.remove-friend:hover { background: #c9505020; color: #bd4747; opacity: 1; }.remove-friend svg { width: 15px; }
 .friend-avatar { display: grid; place-items: center; width: 37px; height: 37px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--paper-soft)); color: var(--paper); font-family: "Playfair Display", Georgia, serif; font-size: 16px; font-weight: 700; }
 .friend-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .friend-avatar { aspect-ratio: 1 / 1; min-width: 37px; min-height: 37px; max-width: 37px; max-height: 37px; overflow: hidden; line-height: 0; }
@@ -114,6 +115,7 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 .friend-qr-card img { width: min(240px, 70vw); aspect-ratio: 1; padding: 10px; border-radius: 14px; background: #f6f6f2; }
 .friend-qr-card strong { font-size: 15px; letter-spacing: .08em; }
 .friend-qr-card p { max-width: 220px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.friend-sent-sheet { overflow: hidden; }.friend-sent-close { position: absolute; top: 15px; right: 18px; z-index: 2; }.friend-sent-card { display: grid; justify-items: center; padding: 21px 7px 10px; text-align: center; }.friend-sent-orbit { display: grid; place-items: center; width: 72px; height: 72px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 50%; background: radial-gradient(circle, var(--paper) 0 24%, transparent 25%), linear-gradient(135deg, var(--accent), var(--ink)); color: var(--paper); box-shadow: 0 0 0 12px color-mix(in srgb, var(--accent) 11%, transparent); }.friend-sent-orbit svg { width: 27px; }.friend-sent-card h2 { margin: 5px 0 10px; font-size: 31px; line-height: .98; }.friend-sent-card > p:not(.eyebrow) { max-width: 255px; color: var(--muted); font-size: 12px; line-height: 1.55; }.friend-sent-card strong { color: var(--ink); }.friend-sent-card .primary-wide { margin-top: 22px; }
 .friend-profile-banner { height: 128px; border-radius: 18px; background: linear-gradient(135deg, #353a35, #a4a28f); background-size: cover; background-position: center; }
 .friend-profile-intro { display: flex; align-items: end; gap: 12px; margin: -40px 14px 0; position: relative; }
 .friend-profile-intro img { width: 80px; height: 80px; border: 4px solid var(--paper); border-radius: 50%; object-fit: cover; background: var(--paper-soft); }

@@ -603,7 +603,11 @@ async function renderFriends() {
   if (error) return console.warn("No pudimos cargar tus friends:", error.message);
   const accepted = connections.filter(item => item.status === "accepted");
   const incoming = connections.filter(item => item.status === "pending" && item.friend_id === authenticatedUser.id);
-  const friendIds = accepted.map(item => item.user_id === authenticatedUser.id ? item.friend_id : item.user_id);
+  const friendConnections = accepted.map(item => ({
+    connectionId: item.id,
+    profileId: item.user_id === authenticatedUser.id ? item.friend_id : item.user_id
+  }));
+  const friendIds = friendConnections.map(item => item.profileId);
   const incomingIds = incoming.map(item => item.user_id);
   const visibleIds = [...new Set([...friendIds, ...incomingIds])];
   let profiles = [];
@@ -615,14 +619,12 @@ async function renderFriends() {
   if ($("#sideFriendsCount")) $("#sideFriendsCount").textContent = String(accepted.length);
   const profileById = new Map(profiles.map(profile => [profile.id, profile]));
   friendProfiles = profileById;
-  const friendsMarkup = friendIds.map(id => {
-    const profile = profileById.get(id);
+  const friendsMarkup = friendConnections.map(({ connectionId, profileId }) => {
+    const profile = profileById.get(profileId);
     const rawName = profile?.display_name || "Friend de Eclipse";
     const name = displayName(rawName, "Friend de Eclipse").name;
     const avatar = profile?.avatar_url ? `<img src="${escapeHtml(profile.avatar_url)}" alt="" />` : escapeHtml(name.slice(0, 1).toUpperCase());
-    return `<button class="friend-row" type="button" data-open-friend="${id}"><span class="friend-avatar">${avatar}</span><span><strong>${displayNameMarkup(rawName, "Friend de Eclipse")}</strong><small>En su propia órbita</small></span><i data-lucide="chevron-right"></i></button>`;
-    const artists = profile?.favorite_artists ? ` · ${escapeHtml(profile.favorite_artists.split(",")[0].trim())}` : "";
-    return `<article class="friend-row"><span class="friend-avatar">${escapeHtml(name.slice(0, 1).toUpperCase())}</span><span><strong>${escapeHtml(name)}</strong><small>En su propia órbita${artists}</small></span><i data-lucide="chevron-right"></i></article>`;
+    return `<article class="friend-row"><button class="friend-open" type="button" data-open-friend="${profileId}"><span class="friend-avatar">${avatar}</span><span><strong>${displayNameMarkup(rawName, "Friend de Eclipse")}</strong><small>En su propia órbita</small></span><i data-lucide="chevron-right"></i></button><button class="remove-friend" type="button" data-remove-friend="${connectionId}" aria-label="Eliminar a ${escapeHtml(name)}" title="Eliminar friend"><i data-lucide="user-minus"></i></button></article>`;
   });
   const incomingMarkup = incoming.map(item => {
     const sender = profileById.get(item.user_id)?.display_name || "Alguien";
@@ -1660,11 +1662,23 @@ function bindEvents() {
     button.disabled = false;
     if (error) return showToast(error.message);
     $("#friendCodeInput").value = "";
-    showToast("Solicitud enviada. Espera a que la acepten.");
+    $("#friendSentCode").textContent = code;
+    openSheet("friendSentSheet");
     renderFriends();
   });
   $("#refreshFriends").addEventListener("click", renderFriends);
   $("#friendsList").addEventListener("click", async event => {
+    const removeButton = event.target.closest("[data-remove-friend]");
+    if (removeButton) {
+      if (!window.confirm("¿Eliminar a este friend? Podrán enviarse una nueva solicitud cuando quieran.")) return;
+      const client = getSupabaseClient();
+      if (!client) return;
+      removeButton.disabled = true;
+      const { error } = await client.from("friendships").delete().eq("id", removeButton.dataset.removeFriend);
+      if (error) { removeButton.disabled = false; return showToast(error.message); }
+      showToast("Friend eliminado de tu círculo.");
+      return renderFriends();
+    }
     const friendButton = event.target.closest("[data-open-friend]");
     if (friendButton) return openFriendProfile(friendProfiles.get(friendButton.dataset.openFriend));
     const button = event.target.closest("[data-accept-friend], [data-decline-friend]");

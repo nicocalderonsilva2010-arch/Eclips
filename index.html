@@ -420,6 +420,12 @@
       <div class="friend-qr-card"><img id="friendQrImage" alt="Código QR para agregarte como friend" /><strong id="friendQrCode">ECLIPSE-0000</strong><p>Al escanearlo se abrirá Eclipse con tu código listo para enviar la solicitud.</p></div>
     </aside>
 
+    <aside class="sheet friend-sent-sheet" id="friendSentSheet" aria-hidden="true" aria-label="Solicitud de amistad enviada">
+      <div class="sheet-grabber"></div>
+      <button class="close-sheet compact friend-sent-close" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button>
+      <div class="friend-sent-card"><span class="friend-sent-orbit"><i data-lucide="sparkles"></i></span><p class="eyebrow">NUEVA CONEXIÓN</p><h2>Tu solicitud<br />ya salió a orbitar.</h2><p>La enviamos a <strong id="friendSentCode">ECLIPSE-XXXX</strong>. Cuando la acepte, aparecerá en tu círculo.</p><button class="primary-wide" type="button" data-close-sheet>Seguir explorando</button></div>
+    </aside>
+
     <aside class="sheet friend-profile-sheet" id="friendProfileSheet" aria-hidden="true" aria-label="Perfil de un friend">
       <div class="sheet-grabber"></div>
       <header class="sheet-header"><button class="close-sheet" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="chevron-down"></i></button><span>PERFIL DE FRIEND</span><span></span></header>
@@ -434,13 +440,14 @@
     <aside class="sheet about-sheet" id="aboutSheet" aria-hidden="true" aria-label="Sobre Eclipse">
       <div class="sheet-grabber"></div>
       <header class="settings-header"><div><p class="eyebrow">EL PROYECTO</p><h2>Sobre Eclipse</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
-      <div class="about-hero"><span class="about-mark">E</span><div><p class="eyebrow">ECLIPSE · v1.0</p><h3>Tu música,<br />tu espacio.</h3></div></div>
+      <div class="about-hero"><span class="about-mark">E</span><div><p class="eyebrow">ECLIPSE · v1.1.0 BETA</p><h3>Tu música,<br />tu espacio.</h3></div></div>
       <p class="about-intro">Eclipse es un rincón personal para escuchar, ordenar y compartir la música que te acompaña.</p>
       <section class="about-credit"><span><i data-lucide="sparkles"></i></span><div><p class="eyebrow">CREADO POR</p><strong>Nicolás Calderón · Manchi</strong><small>Un pelado colombiano de 15 años detrás del diseño, la idea y el desarrollo de Eclipse.</small></div></section>
       <section class="about-details" aria-label="Detalles del proyecto">
         <div><i data-lucide="heart"></i><span><b>Hecho con intención</b><small>Una experiencia musical más personal.</small></span></div>
         <div><i data-lucide="shield-check"></i><span><b>Tu espacio</b><small>Perfiles, Friends y preferencias para ti.</small></span></div>
         <div><i data-lucide="layers-3"></i><span><b>Construido con</b><small>HTML, CSS, JavaScript y Supabase.</small></span></div>
+        <div><i data-lucide="flask-conical"></i><span><b>Versión actual</b><small>v1.1.0 beta · Friends, perfiles y búsqueda en evolución.</small></span></div>
       </section>
       <p class="about-footer">Gracias por formar parte de esta órbita.</p>
     </aside>
