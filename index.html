@@ -344,7 +344,7 @@
         <div class="photo-position-grid"><label for="profileBannerPositionX">Horizontal<input id="profileBannerPositionX" type="range" min="0" max="100" value="50" /></label><label for="profileBannerPositionY">Vertical<input id="profileBannerPositionY" type="range" min="0" max="100" value="50" /></label></div>
         </div>
       </details>
-      <div class="profile-metrics" aria-label="Estadísticas de perfil"><div><strong id="profileTrackStat">0</strong><span>canciones</span></div><div><strong>—</strong><span>escuchas</span></div><div><strong id="followerCount">0</strong><span>seguidores</span></div></div>
+      <div class="profile-metrics" aria-label="Estadísticas de perfil"><div><strong id="profileTrackStat">0</strong><span>canciones</span></div><div><strong>—</strong><span>escuchas</span></div><button class="profile-followers-button" id="openFollowers" type="button"><strong id="followerCount">0</strong><span>seguidores</span></button></div>
       <label class="input-label" for="profileNameInput">¿Cómo quieres que te saludemos?</label>
       <input class="text-input" id="profileNameInput" maxlength="30" value="Luna" placeholder="Ej. &lt;#F00&gt;Manchi" />
       <small class="name-color-help">Tip: escribe <b>&lt;#F00&gt;</b> antes de tu nombre para darle color. El código no se verá en tu perfil.</small>
@@ -364,6 +364,8 @@
       <button class="profile-signout danger" id="deleteAccount" type="button"><i data-lucide="trash-2"></i> Eliminar mi cuenta</button>
       <input id="profileBannerInput" type="file" accept="image/*" hidden />
     </aside>
+
+    <aside class="sheet followers-sheet" id="followersSheet" aria-hidden="true" aria-label="Tus seguidores"><div class="sheet-grabber"></div><header class="settings-header"><div><p class="eyebrow">TU PERFIL</p><h2>Seguidores</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header><p class="followers-copy">Personas que siguen tu espacio en Eclipse.</p><div class="followers-list" id="followersList"></div></aside>
 
     <aside class="sheet album-sheet" id="albumSheet" aria-hidden="true" aria-label="Detalle de álbum">
       <div class="sheet-grabber"></div>

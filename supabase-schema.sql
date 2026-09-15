@@ -157,6 +157,12 @@ $$;
 
 grant execute on function public.search_eclipse_people(text) to authenticated;
 
+create or replace function public.get_my_eclipse_followers()
+returns table (id uuid, display_name text, avatar_url text, bio text, favorite_artists text, banner_url text, gallery jsonb)
+language sql security definer set search_path = public
+as $$ select p.id, p.display_name, p.avatar_url, p.bio, p.favorite_artists, p.banner_url, p.gallery from public.follows f join public.profiles p on p.id = f.follower_id where f.following_id = auth.uid() order by f.created_at desc; $$;
+grant execute on function public.get_my_eclipse_followers() to authenticated;
+
 -- Se invoca únicamente después de reautenticar con correo y contraseña en la app.
 -- El borrado de auth.users activa las cascadas de perfiles, friends y follows.
 create or replace function public.delete_my_eclipse_account()

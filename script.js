@@ -562,6 +562,11 @@ function setClock() {
 function getFriendCode() {
   const key = `eclipse-friend-code-${authenticatedUser?.id || "local"}`;
   let code = localStorage.getItem(key);
+  // Migrate codes created by the old ECLIPSE-XXXX format.
+  if (code?.toUpperCase().startsWith("ECLIPSE-")) {
+    code = code.slice(8).toUpperCase();
+    localStorage.setItem(key, code);
+  }
   if (!code) {
     const seed = (authenticatedUser?.id || crypto.randomUUID()).replace(/[^a-z0-9]/gi, "").slice(-8).toUpperCase();
     code = seed;
@@ -571,6 +576,7 @@ function getFriendCode() {
 }
 
 function normalizeFriendCode(value = "") {
+  if (value == null) return "";
   const raw = String(value).trim().toUpperCase().replace(/\s+/g, "");
   const match = raw.match(/(?:ECLIPSE-)?([A-Z0-9]{4,30})/);
   return match ? match[1] : raw;
@@ -671,6 +677,22 @@ function openFriendProfile(friend) {
     ? gallery.map((image, index) => `<img src="${escapeHtml(image)}" alt="Foto ${index + 1}" />`).join("")
     : `<span class="profile-gallery-empty"><i data-lucide="image"></i> Aún no tiene fotos públicas.</span>`;
   openSheet("friendProfileSheet");
+  drawIcons();
+}
+
+async function renderFollowers() {
+  const list = $("#followersList"), client = getSupabaseClient();
+  if (!list || !client || !authenticatedUser) return;
+  list.innerHTML = `<div class="empty-state">Cargando seguidores…</div>`;
+  const { data, error } = await client.rpc("get_my_eclipse_followers");
+  if (error) { list.innerHTML = `<div class="empty-state">No pudimos cargar tus seguidores.</div>`; return; }
+  const people = data || [];
+  people.forEach(person => friendProfiles.set(person.id, person));
+  list.innerHTML = people.length ? people.map(person => {
+    const name = displayName(person.display_name, "Usuario de Eclipse").name;
+    const avatar = person.avatar_url ? `<img src="${escapeHtml(person.avatar_url)}" alt="" />` : escapeHtml(name[0].toUpperCase());
+    return `<button class="follower-row" type="button" data-open-friend="${person.id}"><span class="friend-avatar">${avatar}</span><span><strong>${displayNameMarkup(person.display_name, "Usuario de Eclipse")}</strong><small>${escapeHtml(person.bio || "En Eclipse")}</small></span><i data-lucide="chevron-right"></i></button>`;
+  }).join("") : `<div class="empty-state">Aún no tienes seguidores.</div>`;
   drawIcons();
 }
 
@@ -1645,6 +1667,7 @@ function bindEvents() {
   $("#openCustomize").addEventListener("click", () => openSheet("settingsSheet"));
   $("#desktopCustomize").addEventListener("click", () => openSheet("settingsSheet"));
   $("#openProfile").addEventListener("click", () => openSheet("profileSheet"));
+  $("#openFollowers")?.addEventListener("click", () => { renderFollowers(); openSheet("followersSheet"); });
   $("#openAbout")?.addEventListener("click", () => openSheet("aboutSheet"));
   $("#openAboutFromProfile")?.addEventListener("click", () => openSheet("aboutSheet"));
   $("#copyFriendCode").addEventListener("click", async () => {
@@ -1700,6 +1723,10 @@ function bindEvents() {
     if (error) return showToast(error.message);
     showToast(button.dataset.acceptFriend ? "Ahora son friends. Ya puedes ver su espacio." : "Solicitud rechazada.");
     renderFriends();
+  });
+  $("#followersList")?.addEventListener("click", event => {
+    const button = event.target.closest("[data-open-friend]");
+    if (button) openFriendProfile(friendProfiles.get(button.dataset.openFriend));
   });
   $("#showFriendQr").addEventListener("click", async () => {
     const code = getFriendCode();
