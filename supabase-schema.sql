@@ -140,6 +140,45 @@ create table if not exists public.friend_messages (
 create index if not exists friend_messages_conversation_idx
 on public.friend_messages (sender_id, recipient_id, created_at);
 
+-- Adjuntos del chat: texto, fotos, videos y notas de voz.
+alter table public.friend_messages add column if not exists media_url text;
+alter table public.friend_messages add column if not exists media_type text;
+alter table public.friend_messages add column if not exists media_name text;
+alter table public.friend_messages alter column content set default '';
+alter table public.friend_messages drop constraint if exists friend_messages_content_check;
+alter table public.friend_messages drop constraint if exists friend_messages_payload_check;
+alter table public.friend_messages add constraint friend_messages_payload_check
+check (
+  char_length(trim(content)) <= 1000
+  and (char_length(trim(content)) >= 1 or media_url is not null)
+);
+
+-- Bucket para los adjuntos. El nombre empieza por el UUID de quien lo sube.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('chat-media', 'chat-media', true, 26214400)
+on conflict (id) do update set public = true, file_size_limit = 26214400, allowed_mime_types = null;
+
+drop policy if exists "Eclipse chat media upload" on storage.objects;
+create policy "Eclipse chat media upload"
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'chat-media'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+);
+
+drop policy if exists "Eclipse chat media read" on storage.objects;
+create policy "Eclipse chat media read"
+on storage.objects for select to authenticated
+using (bucket_id = 'chat-media');
+
+drop policy if exists "Eclipse chat media delete" on storage.objects;
+create policy "Eclipse chat media delete"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'chat-media'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+);
+
 alter table public.friend_messages enable row level security;
 grant select, insert on public.friend_messages to authenticated;
 

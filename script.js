@@ -120,6 +120,9 @@ let chatTypingTimer = null;
 let chatTypingHideTimer = null;
 let chatOptimisticMessages = [];
 let chatLiveMessageKeys = new Set();
+let chatMediaRecorder = null;
+let chatRecordingStream = null;
+let chatRecordingChunks = [];
 let qrScannerStream = null;
 let qrScannerTimer = null;
 let searchFilter = "all";
@@ -619,11 +622,21 @@ function isActiveChatMessage(message) {
 function chatBubbleMarkup(message) {
   const mine = message.sender_id === authenticatedUser.id;
   const key = encodeURIComponent(chatMessageKey(message));
-  return `<div class="chat-bubble${mine ? " mine" : ""}${message.optimistic ? " pending" : ""}" data-chat-message-id="${escapeHtml(message.id)}" data-chat-key="${key}">${escapeHtml(message.content)}<time datetime="${escapeHtml(message.created_at)}">${escapeHtml(formatChatTime(message.created_at))}</time></div>`;
+  return `<div class="chat-bubble${mine ? " mine" : ""}${message.optimistic ? " pending" : ""}" data-chat-message-id="${escapeHtml(message.id)}" data-chat-key="${key}">${chatMediaMarkup(message)}${message.content ? `<span class="chat-text">${escapeHtml(message.content)}</span>` : ""}<time datetime="${escapeHtml(message.created_at)}">${escapeHtml(formatChatTime(message.created_at))}</time></div>`;
+}
+
+function chatMediaMarkup(message) {
+  if (!message.media_url) return "";
+  const url = escapeHtml(message.media_url);
+  const name = escapeHtml(message.media_name || "Archivo adjunto");
+  if (message.media_type?.startsWith("image/")) return `<img class="chat-media chat-image" src="${url}" alt="${name}" loading="lazy" />`;
+  if (message.media_type?.startsWith("video/")) return `<video class="chat-media chat-video" src="${url}" controls playsinline preload="metadata"></video>`;
+  if (message.media_type?.startsWith("audio/")) return `<audio class="chat-audio" src="${url}" controls preload="metadata"></audio>`;
+  return `<a class="chat-file" href="${url}" target="_blank" rel="noopener">${name}</a>`;
 }
 
 function chatMessageKey(message) {
-  return `${message.sender_id}:${message.content}`;
+  return `${message.sender_id}:${message.content}:${message.media_url || ""}`;
 }
 
 function appendChatMessage(message) {
@@ -635,13 +648,90 @@ function appendChatMessage(message) {
   container.scrollTop = container.scrollHeight;
 }
 
+async function sendChatMessage({ content = "", mediaUrl = "", mediaType = "", mediaName = "" }) {
+  const client = getSupabaseClient();
+  if (!client || !activeChatFriend || !authenticatedUser) return false;
+  const message = {
+    id: `pending-${crypto.randomUUID?.() || Date.now()}`,
+    sender_id: authenticatedUser.id,
+    recipient_id: activeChatFriend.id,
+    content,
+    media_url: mediaUrl,
+    media_type: mediaType,
+    media_name: mediaName,
+    created_at: new Date().toISOString(),
+    optimistic: true
+  };
+  chatOptimisticMessages.push(message);
+  appendChatMessage(message);
+  chatChannel?.send({ type: "broadcast", event: "message", payload: { message: { ...message, optimistic: false } } });
+  const { error } = await client.from("friend_messages").insert({
+    sender_id: message.sender_id,
+    recipient_id: message.recipient_id,
+    content,
+    media_url: mediaUrl || null,
+    media_type: mediaType || null,
+    media_name: mediaName || null
+  });
+  if (!error) return true;
+  chatOptimisticMessages = chatOptimisticMessages.filter(item => item.id !== message.id);
+  renderChat();
+  showToast(error.message);
+  return false;
+}
+
+async function uploadChatMedia(file) {
+  if (!file || !authenticatedUser || !activeChatFriend) return;
+  if (!/^(image|video|audio)\//.test(file.type)) return showToast("Elige una foto, video o audio.");
+  if (file.size > 25 * 1024 * 1024) return showToast("El archivo debe pesar máximo 25 MB.");
+  const client = getSupabaseClient();
+  if (!client) return showToast("Configura Supabase primero.");
+  const extension = file.name.split(".").pop()?.replace(/[^a-z0-9]/gi, "") || "bin";
+  const path = `${authenticatedUser.id}/${activeChatFriend.id}/${Date.now()}-${crypto.randomUUID?.() || "media"}.${extension}`;
+  showToast("Subiendo archivo…");
+  const { error } = await client.storage.from("chat-media").upload(path, file, { contentType: file.type, upsert: false });
+  if (error) return showToast(error.message);
+  const { data } = client.storage.from("chat-media").getPublicUrl(path);
+  await sendChatMessage({ mediaUrl: data.publicUrl, mediaType: file.type, mediaName: file.name });
+}
+
+function stopVoiceRecording() {
+  if (chatMediaRecorder?.state === "recording") chatMediaRecorder.stop();
+}
+
+async function toggleVoiceRecording() {
+  const button = $("#chatRecord");
+  if (chatMediaRecorder?.state === "recording") return stopVoiceRecording();
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return showToast("Tu navegador no permite grabar audio.");
+  try {
+    chatRecordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chatRecordingChunks = [];
+    chatMediaRecorder = new MediaRecorder(chatRecordingStream);
+    chatMediaRecorder.ondataavailable = event => event.data.size && chatRecordingChunks.push(event.data);
+    chatMediaRecorder.onstop = async () => {
+      chatRecordingStream?.getTracks().forEach(track => track.stop());
+      chatRecordingStream = null;
+      button?.classList.remove("is-recording");
+      if (!chatRecordingChunks.length) return;
+      const type = chatMediaRecorder.mimeType || "audio/webm";
+      const audio = new File([new Blob(chatRecordingChunks, { type })], `nota-de-voz-${Date.now()}.webm`, { type });
+      await uploadChatMedia(audio);
+    };
+    chatMediaRecorder.start();
+    button?.classList.add("is-recording");
+    showToast("Grabando… toca el micrófono para enviar.");
+  } catch {
+    showToast("No pudimos usar el micrófono. Revisa el permiso.");
+  }
+}
+
 async function renderChat() {
   const container = $("#chatMessages");
   const client = getSupabaseClient();
   if (!container || !client || !authenticatedUser || !activeChatFriend) return;
   const friendId = activeChatFriend.id;
   const { data, error } = await client.from("friend_messages")
-    .select("id, sender_id, recipient_id, content, created_at")
+    .select("id, sender_id, recipient_id, content, media_url, media_type, media_name, created_at")
     .or(`and(sender_id.eq.${authenticatedUser.id},recipient_id.eq.${friendId}),and(sender_id.eq.${friendId},recipient_id.eq.${authenticatedUser.id})`)
     .order("created_at", { ascending: true })
     .limit(200);
@@ -673,7 +763,7 @@ function hideChatTyping() {
 function showChatTyping(name) {
   const indicator = $("#chatTyping");
   if (!indicator) return;
-  indicator.querySelector("b").textContent = name;
+  indicator.querySelector("em").textContent = name;
   indicator.hidden = false;
   window.clearTimeout(chatTypingHideTimer);
   chatTypingHideTimer = window.setTimeout(hideChatTyping, 1800);
@@ -710,6 +800,7 @@ function stopChatUpdates() {
   window.clearTimeout(chatTypingTimer);
   chatTypingTimer = null;
   chatLiveMessageKeys.clear();
+  stopVoiceRecording();
   hideChatTyping();
   if (chatChannel) getSupabaseClient()?.removeChannel(chatChannel);
   chatChannel = null;
@@ -1960,39 +2051,20 @@ function bindEvents() {
     const input = $("#chatMessageInput");
     const content = input.value.trim();
     if (!content || !activeChatFriend || !authenticatedUser) return;
-    const client = getSupabaseClient();
-    if (!client) return showToast("Configura Supabase primero.");
-    const button = $("#chatComposer button");
-    const optimisticMessage = {
-      id: `pending-${crypto.randomUUID?.() || Date.now()}`,
-      sender_id: authenticatedUser.id,
-      recipient_id: activeChatFriend.id,
-      content,
-      created_at: new Date().toISOString(),
-      optimistic: true
-    };
-    chatOptimisticMessages.push(optimisticMessage);
-    appendChatMessage(optimisticMessage);
-    chatChannel?.send({
-      type: "broadcast",
-      event: "message",
-      payload: { message: { ...optimisticMessage, optimistic: false } }
-    });
+    const button = $("#chatComposer button[type='submit']");
     input.value = "";
     input.style.height = "";
     button.disabled = true;
-    const { error } = await client.from("friend_messages").insert({
-      sender_id: authenticatedUser.id,
-      recipient_id: activeChatFriend.id,
-      content
-    });
+    await sendChatMessage({ content });
     button.disabled = false;
-    if (error) {
-      chatOptimisticMessages = chatOptimisticMessages.filter(message => message.id !== optimisticMessage.id);
-      renderChat();
-      return showToast(error.message);
-    }
   });
+  $("#chatAttach")?.addEventListener("click", () => $("#chatMediaInput")?.click());
+  $("#chatMediaInput")?.addEventListener("change", async event => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    await uploadChatMedia(file);
+  });
+  $("#chatRecord")?.addEventListener("click", toggleVoiceRecording);
   $("#chatMessageInput")?.addEventListener("input", event => {
     if (!chatChannel || !activeChatFriend || !authenticatedUser || !event.currentTarget.value.trim()) return;
     if (chatTypingTimer) return;

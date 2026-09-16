@@ -143,6 +143,26 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 .chat-typing span { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: chat-typing-dot 1s infinite ease-in-out; }
 .chat-typing span:nth-child(2) { animation-delay: .14s; }.chat-typing span:nth-child(3) { animation-delay: .28s; }.chat-typing b { margin-left: 3px; font-style: normal; }
 @keyframes chat-typing-dot { 0%, 60%, 100% { transform: translateY(0); opacity: .35; } 30% { transform: translateY(-3px); opacity: 1; } }
+
+/* Chat details: the typing state belongs with the contact name, like WhatsApp. */
+.chat-header { align-items: center; margin-bottom: 12px; }
+.chat-contact { display: grid; justify-items: center; gap: 2px; min-width: 0; }
+.chat-contact > b { font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.chat-contact .chat-typing { display: flex; align-items: center; min-height: 12px; gap: 2px; margin: 0; font-size: 9px; line-height: 1; }
+.chat-contact .chat-typing[hidden] { display: none; }
+.chat-contact .chat-typing i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; animation: chat-typing-dot 1s infinite ease-in-out; }
+.chat-contact .chat-typing i:nth-child(2) { animation-delay: .14s; }.chat-contact .chat-typing i:nth-child(3) { animation-delay: .28s; }
+.chat-contact .chat-typing em { margin-left: 2px; font-style: normal; }
+.chat-composer { grid-template-columns: 32px minmax(0, 1fr) 32px 38px; gap: 6px; }
+.chat-composer .chat-attach, .chat-composer .chat-record { display: grid; place-items: center; width: 32px; height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); }
+.chat-composer .chat-attach svg, .chat-composer .chat-record svg { width: 17px; }
+.chat-composer .chat-record.is-recording { color: #c44a4a; background: #c44a4a14; animation: voice-recording 1s infinite ease-in-out; }
+.chat-media { display: block; max-width: 100%; margin-bottom: 5px; border-radius: 10px; background: #0002; }
+.chat-image { max-height: 260px; object-fit: cover; }.chat-video { max-height: 260px; }
+.chat-audio { display: block; width: min(230px, 100%); height: 34px; margin-bottom: 3px; }
+.chat-file { display: block; margin-bottom: 5px; color: inherit; font-weight: 700; text-underline-offset: 3px; }
+.chat-bubble .chat-text { display: block; }
+@keyframes voice-recording { 50% { transform: scale(1.08); } }
 @keyframes auth-pop-in { from { opacity: 0; transform: scale(.82) translateY(18px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes auth-pop-out { 45% { opacity: 1; transform: scale(1.06); } to { opacity: 0; transform: scale(.7) translateY(-28px); } }
 
