@@ -54,8 +54,8 @@ const THEME_TOKENS = {
     "--muted": "#777771", "--line": "rgba(20, 20, 20, 0.1)", "--glass": "rgba(255, 255, 252, 0.62)", "--accent": "#60645a"
   },
   wine: {
-    "--paper": "#620817", "--paper-soft": "#41070f", "--ink": "#fff5f3",
-    "--muted": "#e2a2aa", "--line": "rgba(255, 230, 228, 0.16)", "--glass": "rgba(91, 8, 22, 0.78)", "--accent": "#ff4056"
+    "--paper": "#250b12", "--paper-soft": "#3a101b", "--ink": "#fff7f2",
+    "--muted": "#d7a4ab", "--line": "rgba(255, 226, 229, 0.14)", "--glass": "rgba(37, 11, 18, 0.88)", "--accent": "#e85164"
   },
   dark: {
     "--paper": "#0b1220", "--paper-soft": "#121d2d", "--ink": "#edf5ff",
@@ -850,9 +850,13 @@ function applySettings() {
     ? settings.profileGallery.map((image, index) => `<img src="${image}" alt="Decoración ${index + 1} de tu perfil" />`).join("")
     : `<span class="profile-gallery-empty"><i data-lucide="image"></i> Tu galería personal</span>`;
   const surface = $("#appSurface");
-  surface.style.backgroundImage = settings.background
-    ? `url('${settings.background}')`
-    : "linear-gradient(145deg, rgba(255,255,255,.85), rgba(235,235,228,.74))";
+  // El tema nocturno define su propia superficie para no mezclar un degradado
+  // claro guardado con los colores oscuros y perder contraste.
+  surface.style.backgroundImage = ["dark", "wine"].includes(settings.theme)
+    ? ""
+    : settings.background
+      ? `url('${settings.background}')`
+      : "linear-gradient(145deg, rgba(255,255,255,.85), rgba(235,235,228,.74))";
   surface.classList.toggle("has-custom-background", Boolean(settings.background));
   applyVisualPreferences();
   syncSettingControls();
@@ -1770,7 +1774,7 @@ function bindEvents() {
       renderAuthMode();
       $("#authEmail").value = email;
       $("#authPassword").value = "";
-      return setAuthStatus("Cuenta creada. Ahora inicia sesión para entrar.");
+      return setAuthStatus("Cuenta creada. Confirma tu correo para iniciar sesión.");
     }
     if (!result.data.session) return setAuthStatus("Revisa tu correo para confirmar la cuenta y luego inicia sesión.");
     authenticatedUser = result.data.user;

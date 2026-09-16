@@ -7,7 +7,7 @@ html[data-theme="dark"] .screen.has-custom-background::before, html[data-theme="
 .is-current .track-info strong { color: var(--accent); }
 html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 
-.theme-wine { background: linear-gradient(135deg, #b5102c 0 70%, #090305 70%); }
+.theme-wine { background: radial-gradient(circle at 28% 25%, #e85164 0 9%, transparent 10%), linear-gradient(135deg, #721a2b, #260910 68%); }
 .avatar-button, .profile-large { overflow: hidden; }
 .avatar-button { border-radius: 50%; isolation: isolate; }
 .avatar-button { width: 41px; height: 41px; }
@@ -199,6 +199,45 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 @media (max-width: 500px) {
   .friends-view { padding-left: 16px; padding-right: 16px; }.friends-view .simple-view-header h1 { font-size: 35px; }.friends-view .friend-code-card { min-height: 99px; padding: 18px; border-radius: 20px; }.friends-view .friend-code-card strong { font-size: 17px; }.friends-view .add-friend-card { padding: 16px; border-radius: 20px; }.friends-view .add-friend-card h2 { font-size: 21px; }.friends-view .friends-list-section { margin-top: 25px; }
 }
+
+/* Dark theme: a calm, legible night surface instead of a washed-out overlay. */
+html[data-theme="dark"] #appSurface {
+  background: radial-gradient(circle at 84% 4%, rgba(66, 155, 207, .15), transparent 27%), linear-gradient(145deg, #0b1523 0%, #09111d 54%, #070c14 100%) !important;
+}
+html[data-theme="dark"] #appSurface::before {
+  background: linear-gradient(180deg, rgba(6, 13, 23, .08), rgba(6, 13, 23, .28));
+  backdrop-filter: none;
+}
+html[data-theme="dark"] #appSurface::after { display: none; }
+html[data-theme="dark"] .tab-bar {
+  background: rgba(8, 17, 29, .9);
+  border-color: rgba(174, 211, 241, .12);
+}
+html[data-theme="dark"] .tab:hover,
+html[data-theme="dark"] .tab.active { background: #1b3045; color: #f1f7ff; }
+html[data-theme="dark"] .quick-action,
+html[data-theme="dark"] .search-field,
+html[data-theme="dark"] .library-album-row,
+html[data-theme="dark"] .add-friend-card,
+html[data-theme="dark"] .friends-list { border-color: rgba(174, 211, 241, .14); }
+html[data-theme="dark"] .home-companion { background: linear-gradient(150deg, #16293b, #0f1d2c); box-shadow: 0 20px 50px rgba(0,0,0,.22); }
+
+/* Rojo vino: profundo y cálido, sin los paneles rosados que lavaban la interfaz. */
+html[data-theme="wine"] #appSurface {
+  background: radial-gradient(circle at 86% 2%, rgba(207, 62, 82, .2), transparent 25%), radial-gradient(circle at 3% 100%, rgba(100, 20, 37, .22), transparent 35%), linear-gradient(145deg, #2b0b14 0%, #210810 54%, #16050a 100%) !important;
+}
+html[data-theme="wine"] #appSurface::before { background: linear-gradient(180deg, rgba(21, 4, 9, .1), rgba(21, 4, 9, .3)); backdrop-filter: none; }
+html[data-theme="wine"] .tab-bar { background: rgba(31, 7, 14, .92); border-color: rgba(255, 220, 224, .12); }
+html[data-theme="wine"] .tab:hover,
+html[data-theme="wine"] .tab.active { background: #591525; color: #fff7f2; }
+html[data-theme="wine"] .quick-action,
+html[data-theme="wine"] .search-field,
+html[data-theme="wine"] .library-album-row,
+html[data-theme="wine"] .add-friend-card,
+html[data-theme="wine"] .friends-list,
+html[data-theme="wine"] .notification-button { background: rgba(65, 17, 28, .78); border-color: rgba(255, 220, 224, .13); box-shadow: none; }
+html[data-theme="wine"] .daily-card { background: linear-gradient(120deg, #17070a, #26150f); box-shadow: 0 16px 30px rgba(0,0,0,.28); }
+html[data-theme="wine"] .home-companion { background: linear-gradient(150deg, #5a1425, #2b0911); box-shadow: 0 20px 50px rgba(0,0,0,.25); }
 
 /* Cleaner desktop: content uses the full canvas; player opens only on demand. */
 @media (min-width: 701px) {
