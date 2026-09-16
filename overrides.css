@@ -84,21 +84,21 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 .add-friend-card > p:not(.eyebrow) { margin-top: 4px; color: var(--muted); font-size: 11px; }
 .friend-add-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; margin-top: 13px; }
 .friend-add-row .primary-wide { width: auto; padding: 10px 13px; }
-.friend-qr-button { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 4px 0; border: 0; background: transparent; color: var(--muted); font-size: 10px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.friend-qr-actions { display: flex; flex-wrap: wrap; gap: 15px; }.friend-qr-button { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 4px 0; border: 0; background: transparent; color: var(--muted); font-size: 10px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .friend-qr-button svg { width: 14px; }
 .friends-list-section { margin-top: 22px; }
 .friends-list .empty-state { display: grid; justify-items: center; gap: 6px; padding: 24px 16px; }
 .friends-list .empty-state svg { width: 22px; }
 .friends-list .empty-state strong { color: var(--ink); font-size: 12px; }
 .friends-list .empty-state span { max-width: 210px; }
-.friend-row { display: grid; grid-template-columns: minmax(0, 1fr) 30px; align-items: center; gap: 5px; padding: 4px; border-bottom: 1px solid var(--line); }
+.friend-row { display: grid; grid-template-columns: minmax(0, 1fr) 30px 30px; align-items: center; gap: 5px; padding: 4px; border-bottom: 1px solid var(--line); }
 .friend-open { width: 100%; display: grid; grid-template-columns: 38px 1fr 16px; align-items: center; gap: 10px; padding: 7px 2px; border: 0; border-radius: 10px; background: transparent; text-align: left; color: inherit; }
 .friend-open:hover { background: var(--paper-soft); }
 .friend-row strong, .friend-row small { display: block; }
 .friend-row strong { font-size: 12px; }
 .friend-row small { margin-top: 2px; color: var(--muted); font-size: 9px; }
 .friend-open > svg { width: 15px; color: var(--muted); }
-.remove-friend { display: grid; place-items: center; width: 29px; height: 29px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); opacity: .7; }.remove-friend:hover { background: #c9505020; color: #bd4747; opacity: 1; }.remove-friend svg { width: 15px; }
+.remove-friend, .open-chat { display: grid; place-items: center; width: 29px; height: 29px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); opacity: .7; }.remove-friend:hover { background: #c9505020; color: #bd4747; opacity: 1; }.remove-friend svg, .open-chat svg { width: 15px; }.open-chat:hover { background: var(--paper-soft); color: var(--ink); opacity: 1; }
 .friend-avatar { display: grid; place-items: center; width: 37px; height: 37px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--paper-soft)); color: var(--paper); font-family: "Playfair Display", Georgia, serif; font-size: 16px; font-weight: 700; }
 .friend-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .friend-avatar { aspect-ratio: 1 / 1; min-width: 37px; min-height: 37px; max-width: 37px; max-height: 37px; overflow: hidden; line-height: 0; }
@@ -116,6 +116,9 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 .friend-qr-card strong { font-size: 15px; letter-spacing: .08em; }
 .friend-qr-card p { max-width: 220px; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .friend-sent-sheet { overflow: hidden; }.friend-sent-close { position: absolute; top: 15px; right: 18px; z-index: 2; }.friend-sent-card { display: grid; justify-items: center; padding: 21px 7px 10px; text-align: center; }.friend-sent-orbit { display: grid; place-items: center; width: 72px; height: 72px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 50%; background: radial-gradient(circle, var(--paper) 0 24%, transparent 25%), linear-gradient(135deg, var(--accent), var(--ink)); color: var(--paper); box-shadow: 0 0 0 12px color-mix(in srgb, var(--accent) 11%, transparent); }.friend-sent-orbit svg { width: 27px; }.friend-sent-card h2 { margin: 5px 0 10px; font-size: 31px; line-height: .98; }.friend-sent-card > p:not(.eyebrow) { max-width: 255px; color: var(--muted); font-size: 12px; line-height: 1.55; }.friend-sent-card strong { color: var(--ink); }.friend-sent-card .primary-wide { margin-top: 22px; }
+.friend-accepted-card .friend-sent-orbit { animation: friendship-orbit 1.1s ease both; }.friend-accepted-card .friend-sent-orbit svg { width: 29px; }.friend-accepted-card h2 { animation: friendship-rise .65s .16s both; }.friend-accepted-card > p { animation: friendship-rise .65s .3s both; }
+.qr-scanner-frame { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 20px; background: var(--ink); }.qr-scanner-frame video { width: 100%; height: 100%; object-fit: cover; }.qr-scanner-corners { position: absolute; inset: 16%; border: 2px solid var(--paper); border-radius: 16px; box-shadow: 0 0 0 999px #0004; }.qr-scanner-corners:after { content: ""; position: absolute; left: 8%; right: 8%; top: 50%; height: 2px; background: var(--paper); box-shadow: 0 0 12px var(--paper); animation: qr-scan 1.7s ease-in-out infinite; }.qr-scanner-status { margin: 14px 3px 4px; color: var(--muted); text-align: center; font-size: 11px; line-height: 1.45; }
+@keyframes friendship-orbit { 0% { transform: scale(.45) rotate(-25deg); opacity: 0; } 65% { transform: scale(1.12) rotate(7deg); } 100% { transform: scale(1) rotate(0); opacity: 1; } } @keyframes friendship-rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } } @keyframes qr-scan { 0%,100% { transform: translateY(-45px); opacity: .4; } 50% { transform: translateY(45px); opacity: 1; } }
 .friend-profile-banner { height: 128px; border-radius: 18px; background: linear-gradient(135deg, #353a35, #a4a28f); background-size: cover; background-position: center; }
 .friend-profile-intro { display: flex; align-items: end; gap: 12px; margin: -40px 14px 0; position: relative; }
 .friend-profile-intro img { width: 80px; height: 80px; border: 4px solid var(--paper); border-radius: 50%; object-fit: cover; background: var(--paper-soft); }
@@ -125,6 +128,17 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 .friend-profile-section .profile-artist-preview, .friend-profile-section .profile-gallery-preview { margin-top: 9px; }
 .friend-profile-note { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 20px; color: var(--muted); font-size: 10px; }
 .friend-profile-note svg { width: 13px; }
+.friend-profile-chat { margin-top: 19px; }
+.chat-sheet { display: flex; flex-direction: column; height: min(72vh, 620px); overflow: hidden; }
+.chat-sheet .sheet-header { flex: none; }
+.chat-messages { flex: 1; min-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 1px 13px; scrollbar-width: thin; }
+.chat-empty { margin: auto; max-width: 220px; color: var(--muted); text-align: center; font-size: 11px; line-height: 1.45; }
+.chat-bubble { align-self: flex-start; max-width: 78%; padding: 9px 11px 7px; border-radius: 15px 15px 15px 4px; background: var(--paper-soft); font-size: 12px; line-height: 1.38; overflow-wrap: anywhere; }
+.chat-bubble.mine { align-self: flex-end; border-radius: 15px 15px 4px 15px; background: var(--ink); color: var(--paper); }
+.chat-bubble time { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; text-align: right; }.chat-bubble.mine time { color: color-mix(in srgb, var(--paper) 65%, transparent); }
+.chat-composer { display: grid; grid-template-columns: 1fr 38px; gap: 8px; align-items: end; flex: none; padding-top: 10px; border-top: 1px solid var(--line); }
+.chat-composer textarea { width: 100%; min-height: 39px; max-height: 100px; resize: none; padding: 10px 11px; border: 1px solid var(--line); border-radius: 13px; background: var(--paper-soft); color: var(--ink); outline: 0; font-size: 12px; }
+.chat-composer button { display: grid; place-items: center; width: 38px; height: 38px; border: 0; border-radius: 12px; background: var(--ink); color: var(--paper); }.chat-composer button:disabled { opacity: .45; cursor: wait; }.chat-composer svg { width: 16px; }
 @keyframes auth-pop-in { from { opacity: 0; transform: scale(.82) translateY(18px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes auth-pop-out { 45% { opacity: 1; transform: scale(1.06); } to { opacity: 0; transform: scale(.7) translateY(-28px); } }
 
@@ -148,6 +162,42 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
   html[data-interface-mode="mobile"] #playerSheet { display: block; z-index: 11; width: min(100%, 420px); max-height: 88vh; height: auto; top: auto; right: auto; bottom: 0; left: 50%; transform: translate(-50%, 105%); border-radius: 30px 30px 0 0; padding: 10px 20px 29px; background: var(--paper); box-shadow: 0 -18px 55px #0000003b; }
   html[data-interface-mode="mobile"] #playerSheet.open { transform: translate(-50%, 0); }
   html[data-interface-mode="mobile"] #playerSheet .sheet-grabber, html[data-interface-mode="mobile"] #playerSheet .close-sheet, html[data-interface-mode="mobile"] #playerSheet .more-button { display: grid; }
+}
+
+/* Friends: una zona social más editorial, densa y cómoda en cualquier tamaño. */
+.friends-view { padding-bottom: 110px; }
+.friends-view .simple-view-header { align-items: end; margin-bottom: 18px; }
+.friends-view .simple-view-header h1 { letter-spacing: -.055em; }
+.friends-view .friends-count { margin-bottom: 5px; box-shadow: 0 5px 15px color-mix(in srgb, var(--ink) 18%, transparent); }
+.friends-view .friend-code-card { position: relative; min-height: 105px; overflow: hidden; padding: 21px; border-radius: 23px; background: linear-gradient(118deg, var(--ink), color-mix(in srgb, var(--ink) 84%, var(--accent))); box-shadow: 0 16px 30px color-mix(in srgb, var(--ink) 13%, transparent); }
+.friends-view .friend-code-card::before { content: ""; position: absolute; width: 160px; height: 160px; right: -48px; top: -77px; border: 1px solid #fff3; border-radius: 50%; box-shadow: 0 0 0 22px #fff1, 0 0 0 45px #fff1; pointer-events: none; }
+.friends-view .friend-code-card > div, .friends-view .friend-code-card button { position: relative; z-index: 1; }
+.friends-view .friend-code-card strong { font-size: 19px; letter-spacing: .1em; }
+.friends-view .friend-code-card button { width: 43px; height: 43px; border-radius: 14px; transition: transform .2s, background .2s; }.friends-view .friend-code-card button:hover { transform: translateY(-2px); background: #fff3; }
+.friends-view .add-friend-card { position: relative; margin-top: 16px; padding: 19px; border-radius: 23px; background: color-mix(in srgb, var(--paper) 80%, transparent); box-shadow: 0 12px 28px color-mix(in srgb, var(--ink) 5%, transparent); }
+.friends-view .add-friend-card h2 { font-size: 23px; }.friends-view .friend-add-row { gap: 9px; }.friends-view .friend-add-row .text-input { min-height: 43px; border-radius: 13px; }.friends-view .friend-add-row .primary-wide { min-height: 43px; border-radius: 13px; padding: 10px 16px; }
+.friends-view .friend-qr-actions { gap: 8px; margin-top: 12px; }.friends-view .friend-qr-button { min-height: 31px; margin: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 99px; background: var(--paper); text-decoration: none; transition: background .2s, transform .2s; }.friends-view .friend-qr-button:hover { background: var(--paper-soft); transform: translateY(-1px); }
+.friends-view .friends-list-section { margin-top: 29px; }.friends-view .section-heading { margin-bottom: 12px; }.friends-view .section-heading h2 { font-size: 24px; }
+.friends-view .friends-list { min-height: 148px; padding: 7px 13px; border-radius: 22px; background: color-mix(in srgb, var(--paper-soft) 54%, transparent); }.friends-view .friends-list .empty-state { min-height: 132px; align-content: center; border: 1px dashed color-mix(in srgb, var(--muted) 30%, transparent); border-radius: 16px; }.friends-view .friends-list .empty-state svg { width: 25px; height: 25px; color: var(--accent); }.friends-view .friends-list .empty-state span { line-height: 1.45; }
+.friends-view .friend-row { padding: 9px 6px; }.friends-view .friend-open { padding: 8px 5px; }.friends-view .friend-avatar { box-shadow: 0 4px 11px color-mix(in srgb, var(--accent) 24%, transparent); }
+
+@media (min-width: 701px) {
+  .friends-view > * { width: min(100%, 940px); }
+  .friends-view .simple-view-header { margin-bottom: 24px; }
+  .friends-view .friend-code-card { min-height: 122px; padding: 25px 27px; border-radius: 26px; }
+  .friends-view .friend-code-card strong { font-size: 21px; }
+  .friends-view .add-friend-card { display: grid; grid-template-columns: minmax(210px, .82fr) minmax(380px, 1.45fr); column-gap: 34px; align-items: center; min-height: 150px; padding: 23px 26px; }
+  .friends-view .add-friend-card > .eyebrow { grid-column: 1; align-self: end; margin-bottom: -11px; }
+  .friends-view .add-friend-card h2 { grid-column: 1; grid-row: 2; align-self: end; }
+  .friends-view .add-friend-card > p:not(.eyebrow) { grid-column: 1; grid-row: 3; align-self: start; }
+  .friends-view .friend-add-row { grid-column: 2; grid-row: 1 / span 2; width: 100%; margin: 0; }
+  .friends-view .friend-qr-actions { grid-column: 2; grid-row: 3; margin: 0; }
+  .friends-view .friends-list-section { margin-top: 34px; }
+  .friends-view .friends-list { min-height: 178px; padding: 10px 16px; }.friends-view .friends-list .empty-state { min-height: 156px; }
+}
+
+@media (max-width: 500px) {
+  .friends-view { padding-left: 16px; padding-right: 16px; }.friends-view .simple-view-header h1 { font-size: 35px; }.friends-view .friend-code-card { min-height: 99px; padding: 18px; border-radius: 20px; }.friends-view .friend-code-card strong { font-size: 17px; }.friends-view .add-friend-card { padding: 16px; border-radius: 20px; }.friends-view .add-friend-card h2 { font-size: 21px; }.friends-view .friends-list-section { margin-top: 25px; }
 }
 
 /* Cleaner desktop: content uses the full canvas; player opens only on demand. */
@@ -381,13 +431,16 @@ html[data-theme="dark"] .daily-card { box-shadow: 0 14px 28px rgba(0, 0, 0, .28)
 .profile-media-tools summary small { color: var(--muted); font-weight: 500; }
 .profile-media-tools[open] summary { border-bottom: 1px solid var(--line); }
 .profile-media-tools-content { padding: 0 14px 14px; }
-.person-result { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 4px; border-bottom: 1px solid var(--line); }
+.person-result { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 4px; border-bottom: 1px solid var(--line); }
 .person-result strong, .person-result small, .person-result em { display: block; }
 .person-result strong { font-size: 12px; }
 .person-result small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; margin-top: 2px; }
 .person-result em { color: var(--muted); font-size: 9px; font-style: normal; margin-top: 4px; }
 .follow-button { border: 1px solid var(--ink); border-radius: 9px; padding: 7px 10px; background: var(--ink); color: var(--paper); font-size: 10px; font-weight: 700; }
 .follow-button.is-following { border-color: var(--line); background: transparent; color: var(--ink); }
+.person-open { min-width: 0; display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 10px; align-items: center; padding: 3px 0; border: 0; background: transparent; color: inherit; text-align: left; }.person-open:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.person-profile-hero { display: flex; align-items: center; gap: 13px; margin: 4px 2px 18px; }.person-profile-hero .friend-avatar { width: 64px; height: 64px; min-width: 64px; min-height: 64px; max-width: 64px; max-height: 64px; font-size: 25px; }.person-profile-hero h2 { font-size: 25px; }
+.person-profile-bio { min-height: 38px; margin: 0 2px; color: var(--muted); font-size: 12px; line-height: 1.5; }.person-profile-followers { margin: 14px 2px 19px; color: var(--muted); font-size: 10px; }
 .friends-view .friend-code-card, .friends-view .add-friend-card { box-shadow: 0 11px 25px rgba(20,20,20,.06); }
 .friends-list { border: 1px solid var(--line); border-radius: 18px; padding: 5px 12px; background: color-mix(in srgb, var(--paper-soft) 42%, transparent); }
 .friend-row { border-radius: 12px; padding: 11px 6px; }

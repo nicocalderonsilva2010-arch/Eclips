@@ -112,6 +112,11 @@ let touchStart = null;
 let supabaseClient = null;
 let authenticatedUser = null;
 let friendProfiles = new Map();
+let searchPeople = new Map();
+let activeChatFriend = null;
+let chatRefreshTimer = null;
+let qrScannerStream = null;
+let qrScannerTimer = null;
 let searchFilter = "all";
 let socialRefreshTimer = null;
 let musicFolderHandle = null;
@@ -596,6 +601,124 @@ function openFriendLinkIfPresent() {
   showToast("Código de amistad listo. Confirma para enviar la solicitud.");
 }
 
+function formatChatTime(value) {
+  return new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit" }).format(new Date(value));
+}
+
+async function renderChat() {
+  const container = $("#chatMessages");
+  const client = getSupabaseClient();
+  if (!container || !client || !authenticatedUser || !activeChatFriend) return;
+  const friendId = activeChatFriend.id;
+  const { data, error } = await client.from("friend_messages")
+    .select("id, sender_id, recipient_id, content, created_at")
+    .or(`and(sender_id.eq.${authenticatedUser.id},recipient_id.eq.${friendId}),and(sender_id.eq.${friendId},recipient_id.eq.${authenticatedUser.id})`)
+    .order("created_at", { ascending: true })
+    .limit(200);
+  if (error) {
+    container.innerHTML = `<div class="chat-empty">No pudimos cargar este chat.</div>`;
+    console.warn("No pudimos cargar el chat:", error.message);
+    return;
+  }
+  container.innerHTML = data?.length
+    ? data.map(message => `<div class="chat-bubble${message.sender_id === authenticatedUser.id ? " mine" : ""}">${escapeHtml(message.content)}<time datetime="${escapeHtml(message.created_at)}">${escapeHtml(formatChatTime(message.created_at))}</time></div>`).join("")
+    : `<div class="chat-empty">Este es el comienzo de su conversación. Di hola.</div>`;
+  container.scrollTop = container.scrollHeight;
+}
+
+function stopChatUpdates() {
+  if (chatRefreshTimer) window.clearInterval(chatRefreshTimer);
+  chatRefreshTimer = null;
+}
+
+function openFriendChat(friend) {
+  if (!friend || !authenticatedUser) return showToast("Inicia sesión para chatear.");
+  activeChatFriend = friend;
+  $("#chatTitle").textContent = displayName(friend.display_name, "FRIEND").name.toUpperCase();
+  $("#chatMessages").innerHTML = `<div class="chat-empty">Cargando conversación…</div>`;
+  openSheet("chatSheet");
+  renderChat();
+  stopChatUpdates();
+  chatRefreshTimer = window.setInterval(() => {
+    if ($("#chatSheet")?.classList.contains("open")) renderChat();
+  }, 5000);
+}
+
+function openSearchPersonProfile(person) {
+  if (!person) return;
+  const name = displayName(person.display_name, "Usuario de Eclipse");
+  const avatar = $("#personProfileAvatar");
+  avatar.innerHTML = person.avatar_url ? `<img src="${escapeHtml(person.avatar_url)}" alt="" />` : escapeHtml(name.name.slice(0, 1).toUpperCase());
+  $("#personProfileName").textContent = name.name;
+  $("#personProfileName").style.color = name.color;
+  $("#personProfileBio").textContent = person.bio || "Esta persona todavía no añadió una biografía.";
+  const followers = Number(person.follower_count || 0);
+  $("#personProfileFollowers").textContent = `${followers} ${followers === 1 ? "seguidor" : "seguidores"}`;
+  $("#addPersonFriend").dataset.personId = person.id;
+  openSheet("personProfileSheet");
+  drawIcons();
+}
+
+function stopQrScanner() {
+  if (qrScannerTimer) window.clearTimeout(qrScannerTimer);
+  qrScannerTimer = null;
+  qrScannerStream?.getTracks().forEach(track => track.stop());
+  qrScannerStream = null;
+  const video = $("#qrScannerVideo");
+  if (video) video.srcObject = null;
+}
+
+function friendCodeFromQr(value = "") {
+  try {
+    return normalizeFriendCode(new URL(value).searchParams.get("friend"));
+  } catch {
+    return normalizeFriendCode(value);
+  }
+}
+
+async function openQrScanner() {
+  const status = $("#qrScannerStatus");
+  const video = $("#qrScannerVideo");
+  if (!navigator.mediaDevices?.getUserMedia) {
+    status.textContent = "Tu navegador no permite usar la cámara. Escribe el código manualmente.";
+    return openSheet("qrScannerSheet");
+  }
+  if (!("BarcodeDetector" in window)) {
+    status.textContent = "Tu navegador no puede leer QR desde la cámara. Escribe el código manualmente.";
+    return openSheet("qrScannerSheet");
+  }
+  openSheet("qrScannerSheet");
+  status.textContent = "Apunta la cámara al QR de tu friend.";
+  try {
+    qrScannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    video.srcObject = qrScannerStream;
+    await video.play();
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    const detect = async () => {
+      if (!qrScannerStream || !$("#qrScannerSheet")?.classList.contains("open")) return;
+      try {
+        const [result] = await detector.detect(video);
+        if (result?.rawValue) {
+          const code = friendCodeFromQr(result.rawValue);
+          if (code && /^[A-Z0-9]{4,30}$/.test(code)) {
+            stopQrScanner();
+            closeSheets();
+            $("#friendCodeInput").value = code;
+            $("#addFriend").click();
+            return;
+          }
+          status.textContent = "Ese QR no es un código de amistad de Eclipse.";
+        }
+      } catch { /* The next frame can still be scanned. */ }
+      qrScannerTimer = window.setTimeout(detect, 220);
+    };
+    detect();
+  } catch {
+    status.textContent = "No pudimos abrir la cámara. Revisa el permiso o escribe el código manualmente.";
+    stopQrScanner();
+  }
+}
+
 async function renderFriends() {
   const client = getSupabaseClient();
   const list = $("#friendsList");
@@ -631,11 +754,11 @@ async function renderFriends() {
     const rawName = profile?.display_name || "Friend de Eclipse";
     const name = displayName(rawName, "Friend de Eclipse").name;
     const avatar = profile?.avatar_url ? `<img src="${escapeHtml(profile.avatar_url)}" alt="" />` : escapeHtml(name.slice(0, 1).toUpperCase());
-    return `<article class="friend-row"><button class="friend-open" type="button" data-open-friend="${profileId}"><span class="friend-avatar">${avatar}</span><span><strong>${displayNameMarkup(rawName, "Friend de Eclipse")}</strong><small>En su propia órbita</small></span><i data-lucide="chevron-right"></i></button><button class="remove-friend" type="button" data-remove-friend="${connectionId}" aria-label="Eliminar a ${escapeHtml(name)}" title="Eliminar friend"><i data-lucide="user-minus"></i></button></article>`;
+    return `<article class="friend-row"><button class="friend-open" type="button" data-open-friend="${profileId}"><span class="friend-avatar">${avatar}</span><span><strong>${displayNameMarkup(rawName, "Friend de Eclipse")}</strong><small>En su propia órbita</small></span><i data-lucide="chevron-right"></i></button><button class="open-chat" type="button" data-open-chat="${profileId}" aria-label="Chatear con ${escapeHtml(name)}" title="Enviar mensaje"><i data-lucide="message-circle"></i></button><button class="remove-friend" type="button" data-remove-friend="${connectionId}" aria-label="Eliminar a ${escapeHtml(name)}" title="Eliminar friend"><i data-lucide="user-minus"></i></button></article>`;
   });
   const incomingMarkup = incoming.map(item => {
     const sender = profileById.get(item.user_id)?.display_name || "Alguien";
-    return `<article class="friend-request"><span><i data-lucide="user-plus"></i></span><p><b>${displayNameMarkup(sender, "Alguien")}</b> te envió una solicitud.<small>Acéptala para ver su perfil decorado.</small></p><span class="friend-request-actions"><button type="button" data-accept-friend="${item.id}">Aceptar</button><button class="decline" type="button" data-decline-friend="${item.id}" aria-label="Rechazar solicitud">×</button></span></article>`;
+    return `<article class="friend-request"><span><i data-lucide="user-plus"></i></span><p><b>${displayNameMarkup(sender, "Alguien")}</b> te envió una solicitud.<small>Acéptala para ver su perfil decorado.</small></p><span class="friend-request-actions"><button type="button" data-accept-friend="${item.id}" data-friend-name="${escapeHtml(displayName(sender, "Alguien").name)}">Aceptar</button><button class="decline" type="button" data-decline-friend="${item.id}" aria-label="Rechazar solicitud">×</button></span></article>`;
   });
   list.innerHTML = [...incomingMarkup, ...friendsMarkup].join("") || `<div class="empty-state"><i data-lucide="users-round"></i><strong>Aún no tienes friends</strong><span>Comparte tu código para empezar a descubrir sus espacios.</span></div>`;
   appNotifications = incoming.map(item => ({ id: `friend-${item.id}`, message: `${displayName(profileById.get(item.user_id)?.display_name, "Alguien").name} te envió una solicitud de amistad.`, createdAt: new Date(item.created_at || Date.now()).getTime(), read: false }));
@@ -676,6 +799,7 @@ function openFriendProfile(friend) {
   $("#friendProfileGallery").innerHTML = gallery.length
     ? gallery.map((image, index) => `<img src="${escapeHtml(image)}" alt="Foto ${index + 1}" />`).join("")
     : `<span class="profile-gallery-empty"><i data-lucide="image"></i> Aún no tiene fotos públicas.</span>`;
+  $("#openFriendChat").dataset.openChat = friend.id;
   openSheet("friendProfileSheet");
   drawIcons();
 }
@@ -928,11 +1052,12 @@ async function renderSearch() {
       return;
     }
     const people = data || [];
+    searchPeople = new Map(people.map(person => [person.id, person]));
     $("#searchLabel").textContent = `${people.length} ${people.length === 1 ? "persona encontrada" : "personas encontradas"}.`;
     $("#searchResults").innerHTML = people.length ? people.map(person => {
       const personName = displayName(person.display_name, "Usuario de Eclipse");
       const avatar = person.avatar_url ? `<img src="${escapeHtml(person.avatar_url)}" alt="" />` : escapeHtml(personName.name.slice(0, 1).toUpperCase());
-      return `<article class="person-result"><span class="friend-avatar">${avatar}</span><span><strong>${displayNameMarkup(person.display_name, "Usuario de Eclipse")}</strong><small>${escapeHtml(person.bio || "En Eclipse")}</small><em>${Number(person.follower_count || 0)} seguidores</em></span><button type="button" class="follow-button${person.is_following ? " is-following" : ""}" data-follow-user="${escapeHtml(person.id)}">${person.is_following ? "Siguiendo" : "Seguir"}</button></article>`;
+      return `<article class="person-result"><button class="person-open" type="button" data-open-person="${escapeHtml(person.id)}" aria-label="Ver perfil de ${escapeHtml(personName.name)}"><span class="friend-avatar">${avatar}</span><span><strong>${displayNameMarkup(person.display_name, "Usuario de Eclipse")}</strong><small>${escapeHtml(person.bio || "En Eclipse")}</small><em>${Number(person.follower_count || 0)} seguidores</em></span></button><button type="button" class="follow-button${person.is_following ? " is-following" : ""}" data-follow-user="${escapeHtml(person.id)}">${person.is_following ? "Siguiendo" : "Seguir"}</button></article>`;
     }).join("") : `<div class="empty-state">No encontramos personas con ese usuario.</div>`;
     drawIcons();
     return;
@@ -1328,6 +1453,8 @@ function togglePlay() {
 function openSheet(id) {
   const sheet = document.getElementById(id);
   if (!sheet) return;
+  if (id !== "chatSheet") stopChatUpdates();
+  if (id !== "qrScannerSheet") stopQrScanner();
   $$(".sheet.open").forEach(item => {
     item.classList.remove("open");
     item.setAttribute("aria-hidden", "true");
@@ -1347,6 +1474,8 @@ function closeSheets() {
     item.inert = true;
   });
   $("#sheetBackdrop").classList.remove("visible");
+  stopChatUpdates();
+  stopQrScanner();
 }
 
 function switchView(viewName) {
@@ -1698,6 +1827,8 @@ function bindEvents() {
   });
   $("#refreshFriends").addEventListener("click", renderFriends);
   $("#friendsList").addEventListener("click", async event => {
+    const chatButton = event.target.closest("[data-open-chat]");
+    if (chatButton) return openFriendChat(friendProfiles.get(chatButton.dataset.openChat));
     const removeButton = event.target.closest("[data-remove-friend]");
     if (removeButton) {
       if (!window.confirm("¿Eliminar a este friend? Podrán enviarse una nueva solicitud cuando quieran.")) return;
@@ -1721,30 +1852,66 @@ function bindEvents() {
       ? await client.from("friendships").update({ status: "accepted", accepted_at: new Date().toISOString() }).eq("id", requestId)
       : await client.from("friendships").delete().eq("id", requestId);
     if (error) return showToast(error.message);
-    showToast(button.dataset.acceptFriend ? "Ahora son friends. Ya puedes ver su espacio." : "Solicitud rechazada.");
-    renderFriends();
+    if (button.dataset.acceptFriend) {
+      $("#friendAcceptedName").textContent = button.dataset.friendName || "tu friend";
+      openSheet("friendAcceptedSheet");
+      renderFriends();
+    } else {
+      showToast("Solicitud rechazada.");
+      renderFriends();
+    }
   });
   $("#followersList")?.addEventListener("click", event => {
     const button = event.target.closest("[data-open-friend]");
     if (button) openFriendProfile(friendProfiles.get(button.dataset.openFriend));
   });
+  $("#openFriendChat")?.addEventListener("click", event => {
+    openFriendChat(friendProfiles.get(event.currentTarget.dataset.openChat));
+  });
+  $("#chatComposer")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const input = $("#chatMessageInput");
+    const content = input.value.trim();
+    if (!content || !activeChatFriend || !authenticatedUser) return;
+    const client = getSupabaseClient();
+    if (!client) return showToast("Configura Supabase primero.");
+    const button = $("#chatComposer button");
+    button.disabled = true;
+    const { error } = await client.from("friend_messages").insert({
+      sender_id: authenticatedUser.id,
+      recipient_id: activeChatFriend.id,
+      content
+    });
+    button.disabled = false;
+    if (error) return showToast(error.message);
+    input.value = "";
+    renderChat();
+  });
   $("#showFriendQr").addEventListener("click", async () => {
     const code = getFriendCode();
     $("#friendQrCode").textContent = code;
     const image = $("#friendQrImage");
+    const shareLink = getFriendShareLink();
+    image.hidden = false;
+    image.onerror = () => {
+      image.onerror = null;
+      image.removeAttribute("src");
+      image.hidden = true;
+      showToast("No pudimos cargar el QR. Comparte el código de arriba.");
+    };
     if (window.QRCode?.toDataURL) {
       try {
-        image.src = await window.QRCode.toDataURL(getFriendShareLink(), { width: 240, margin: 2, color: { dark: "#141414", light: "#f6f6f2" } });
+        image.src = await window.QRCode.toDataURL(shareLink, { width: 240, margin: 2, color: { dark: "#141414", light: "#f6f6f2" } });
       } catch {
-        image.removeAttribute("src");
-        showToast("No pudimos generar el QR. Usa el código de arriba.");
+        image.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&format=png&data=${encodeURIComponent(shareLink)}`;
       }
     } else {
-      image.removeAttribute("src");
-      showToast("No pudimos cargar el generador QR. Usa el código de arriba.");
+      // Respaldo para navegadores donde el CDN de la librería QR esté bloqueado.
+      image.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&format=png&data=${encodeURIComponent(shareLink)}`;
     }
     openSheet("friendQrSheet");
   });
+  $("#scanFriendQr").addEventListener("click", openQrScanner);
   $("#openPlayer").addEventListener("click", () => openSheet("playerSheet"));
   $("#openPlayerFromMini").addEventListener("click", () => openSheet("playerSheet"));
   $("#openAlbumCreator").addEventListener("click", () => openSheet("creatorSheet"));
@@ -2012,8 +2179,25 @@ function bindEvents() {
     selectedCover = image;
     $(".cover-upload span").textContent = "Portada lista para tu álbum";
   }));
+  $("#addPersonFriend")?.addEventListener("click", async event => {
+    const targetId = event.currentTarget.dataset.personId;
+    const client = getSupabaseClient();
+    if (!targetId || !client || !authenticatedUser) return showToast("Inicia sesión para agregar friends.");
+    event.currentTarget.disabled = true;
+    const { error } = await client.rpc("send_friend_request_to_user", { target_id: targetId });
+    event.currentTarget.disabled = false;
+    if (error) return showToast(error.message);
+    showToast("Solicitud de amistad enviada.");
+    closeSheets();
+    renderFriends();
+  });
 
   document.addEventListener("click", event => {
+    const personButton = event.target.closest("[data-open-person]");
+    if (personButton) {
+      openSearchPersonProfile(searchPeople.get(personButton.dataset.openPerson));
+      return;
+    }
     const followButton = event.target.closest("[data-follow-user]");
     if (followButton) {
       const client = getSupabaseClient();

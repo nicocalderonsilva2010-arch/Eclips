@@ -206,7 +206,7 @@
                 <h2 id="addFriendTitle">Agrega a alguien</h2>
                 <p>Escribe su código o escanea su QR.</p>
                 <div class="friend-add-row"><input class="text-input" id="friendCodeInput" maxlength="30" placeholder="Ej. 459786CA" /><button class="primary-wide" id="addFriend" type="button">Agregar</button></div>
-                <button class="friend-qr-button" id="showFriendQr" type="button"><i data-lucide="qr-code"></i> Mostrar mi QR</button>
+                <div class="friend-qr-actions"><button class="friend-qr-button" id="showFriendQr" type="button"><i data-lucide="qr-code"></i> Mostrar mi QR</button><button class="friend-qr-button" id="scanFriendQr" type="button"><i data-lucide="scan-line"></i> Escanear QR</button></div>
               </section>
               <section class="friends-list-section" aria-labelledby="friendsListTitle">
                 <div class="section-heading"><div><p class="eyebrow">CONECTADOS</p><h2 id="friendsListTitle">Tus friends</h2></div><button class="icon-button" id="refreshFriends" type="button" aria-label="Actualizar friends"><i data-lucide="refresh-cw"></i></button></div>
@@ -429,6 +429,19 @@
       <div class="friend-sent-card"><span class="friend-sent-orbit"><i data-lucide="sparkles"></i></span><p class="eyebrow">NUEVA CONEXIÓN</p><h2>Tu solicitud<br />ya salió a orbitar.</h2><p>La enviamos a <strong id="friendSentCode">ECLIPSE-XXXX</strong>. Cuando la acepte, aparecerá en tu círculo.</p><button class="primary-wide" type="button" data-close-sheet>Seguir explorando</button></div>
     </aside>
 
+    <aside class="sheet qr-scanner-sheet" id="qrScannerSheet" aria-hidden="true" aria-label="Escanear código QR de amistad">
+      <div class="sheet-grabber"></div>
+      <header class="settings-header"><div><p class="eyebrow">NUEVA CONEXIÓN</p><h2>Escanea un QR</h2></div><button class="close-sheet compact" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button></header>
+      <div class="qr-scanner-frame"><video id="qrScannerVideo" playsinline muted></video><span class="qr-scanner-corners" aria-hidden="true"></span></div>
+      <p class="qr-scanner-status" id="qrScannerStatus">Permite el acceso a la cámara para escanear el código.</p>
+    </aside>
+
+    <aside class="sheet friend-accepted-sheet" id="friendAcceptedSheet" aria-hidden="true" aria-label="Nueva amistad">
+      <div class="sheet-grabber"></div>
+      <button class="close-sheet compact friend-sent-close" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="x"></i></button>
+      <div class="friend-sent-card friend-accepted-card"><span class="friend-sent-orbit"><i data-lucide="heart-handshake"></i></span><p class="eyebrow">NUEVA AMISTAD</p><h2>Su órbita y la tuya<br />ahora se encuentran.</h2><p>Tú y <strong id="friendAcceptedName">tu friend</strong> ya hacen parte del mismo círculo.</p><button class="primary-wide" type="button" data-close-sheet>Celebrar</button></div>
+    </aside>
+
     <aside class="sheet friend-profile-sheet" id="friendProfileSheet" aria-hidden="true" aria-label="Perfil de un friend">
       <div class="sheet-grabber"></div>
       <header class="sheet-header"><button class="close-sheet" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="chevron-down"></i></button><span>PERFIL DE FRIEND</span><span></span></header>
@@ -437,7 +450,27 @@
       <p class="friend-profile-bio" id="friendProfileBio">Este friend todavía no ha añadido una biografía.</p>
       <section class="friend-profile-section"><p class="eyebrow">ARTISTAS QUE LE REPRESENTAN</p><div class="profile-artist-preview" id="friendProfileArtists"></div></section>
       <section class="friend-profile-section"><p class="eyebrow">SU GALERÍA</p><div class="profile-gallery-preview" id="friendProfileGallery"></div></section>
+      <button class="primary-wide friend-profile-chat" id="openFriendChat" type="button"><i data-lucide="message-circle"></i> Enviar mensaje</button>
       <p class="friend-profile-note"><i data-lucide="lock-keyhole"></i> Estás viendo solo su decoración pública.</p>
+    </aside>
+
+    <aside class="sheet chat-sheet" id="chatSheet" aria-hidden="true" aria-label="Chat con un friend">
+      <div class="sheet-grabber"></div>
+      <header class="sheet-header"><button class="close-sheet" type="button" data-close-sheet aria-label="Cerrar chat"><i data-lucide="chevron-down"></i></button><span id="chatTitle">CHAT</span><span></span></header>
+      <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
+      <form class="chat-composer" id="chatComposer">
+        <textarea id="chatMessageInput" maxlength="1000" rows="1" placeholder="Escribe un mensaje…" aria-label="Mensaje"></textarea>
+        <button type="submit" aria-label="Enviar mensaje"><i data-lucide="send"></i></button>
+      </form>
+    </aside>
+
+    <aside class="sheet person-profile-sheet" id="personProfileSheet" aria-hidden="true" aria-label="Perfil de persona encontrada">
+      <div class="sheet-grabber"></div>
+      <header class="sheet-header"><button class="close-sheet" type="button" data-close-sheet aria-label="Cerrar"><i data-lucide="chevron-down"></i></button><span>PERFIL</span><span></span></header>
+      <div class="person-profile-hero"><span class="friend-avatar" id="personProfileAvatar"></span><div><p class="eyebrow">EN ECLIPSE</p><h2 id="personProfileName">Usuario de Eclipse</h2></div></div>
+      <p class="person-profile-bio" id="personProfileBio"></p>
+      <p class="person-profile-followers" id="personProfileFollowers"></p>
+      <button class="primary-wide" id="addPersonFriend" type="button"><i data-lucide="user-plus"></i> Agregar a friends</button>
     </aside>
 
     <aside class="sheet about-sheet" id="aboutSheet" aria-hidden="true" aria-label="Sobre Eclipse">

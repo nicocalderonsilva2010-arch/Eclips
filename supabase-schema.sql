@@ -103,6 +103,78 @@ $$;
 
 grant execute on function public.send_friend_request(text) to authenticated;
 
+-- Permite solicitar amistad desde un perfil encontrado, sin exponer su código.
+create or replace function public.send_friend_request_to_user(target_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare request_id uuid;
+begin
+  if auth.uid() is null then raise exception 'Debes iniciar sesión'; end if;
+  if target_id = auth.uid() then raise exception 'No puedes agregarte a ti mismo'; end if;
+  if not exists (select 1 from public.profiles where id = target_id) then
+    raise exception 'No encontramos este perfil de Eclipse';
+  end if;
+  insert into public.friendships (user_id, friend_id)
+  values (auth.uid(), target_id)
+  returning id into request_id;
+  return request_id;
+exception when unique_violation then
+  raise exception 'Ya existe una solicitud o amistad con esta persona';
+end;
+$$;
+grant execute on function public.send_friend_request_to_user(uuid) to authenticated;
+
+-- Chat privado: solo dos friends con una amistad aceptada pueden leer o enviar mensajes.
+create table if not exists public.friend_messages (
+  id uuid primary key default gen_random_uuid(),
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  recipient_id uuid not null references auth.users(id) on delete cascade,
+  content text not null check (char_length(trim(content)) between 1 and 1000),
+  created_at timestamptz not null default now(),
+  check (sender_id <> recipient_id)
+);
+
+create index if not exists friend_messages_conversation_idx
+on public.friend_messages (sender_id, recipient_id, created_at);
+
+alter table public.friend_messages enable row level security;
+grant select, insert on public.friend_messages to authenticated;
+
+drop policy if exists "Friends can view their messages" on public.friend_messages;
+create policy "Friends can view their messages"
+on public.friend_messages for select to authenticated
+using (
+  (select auth.uid()) in (sender_id, recipient_id)
+  and exists (
+    select 1 from public.friendships
+    where status = 'accepted'
+      and ((user_id = sender_id and friend_id = recipient_id)
+        or (friend_id = sender_id and user_id = recipient_id))
+  )
+);
+
+drop policy if exists "Friends can send messages" on public.friend_messages;
+create policy "Friends can send messages"
+on public.friend_messages for insert to authenticated
+with check (
+  sender_id = (select auth.uid())
+  and exists (
+    select 1 from public.friendships
+    where status = 'accepted'
+      and ((user_id = sender_id and friend_id = recipient_id)
+        or (friend_id = sender_id and user_id = recipient_id))
+  )
+);
+
+-- Habilita cambios en tiempo real para el chat. Si ya fue agregado, no hace nada.
+do $$ begin
+  alter publication supabase_realtime add table public.friend_messages;
+exception when duplicate_object then null;
+end $$;
+
 -- Seguimientos y búsqueda de personas. La búsqueda es una función segura:
 -- devuelve solamente datos públicos de perfil, incluso con RLS activado.
 create table if not exists public.follows (
