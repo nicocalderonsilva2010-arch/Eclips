@@ -108,7 +108,7 @@ create or replace function public.send_friend_request_to_user(target_id uuid)
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public  
 as $$
 declare request_id uuid;
 begin

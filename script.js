@@ -115,6 +115,11 @@ let friendProfiles = new Map();
 let searchPeople = new Map();
 let activeChatFriend = null;
 let chatRefreshTimer = null;
+let chatChannel = null;
+let chatTypingTimer = null;
+let chatTypingHideTimer = null;
+let chatOptimisticMessages = [];
+let chatLiveMessageKeys = new Set();
 let qrScannerStream = null;
 let qrScannerTimer = null;
 let searchFilter = "all";
@@ -605,6 +610,31 @@ function formatChatTime(value) {
   return new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
+function isActiveChatMessage(message) {
+  if (!message || !authenticatedUser || !activeChatFriend) return false;
+  const participants = [message.sender_id, message.recipient_id];
+  return participants.includes(authenticatedUser.id) && participants.includes(activeChatFriend.id);
+}
+
+function chatBubbleMarkup(message) {
+  const mine = message.sender_id === authenticatedUser.id;
+  const key = encodeURIComponent(chatMessageKey(message));
+  return `<div class="chat-bubble${mine ? " mine" : ""}${message.optimistic ? " pending" : ""}" data-chat-message-id="${escapeHtml(message.id)}" data-chat-key="${key}">${escapeHtml(message.content)}<time datetime="${escapeHtml(message.created_at)}">${escapeHtml(formatChatTime(message.created_at))}</time></div>`;
+}
+
+function chatMessageKey(message) {
+  return `${message.sender_id}:${message.content}`;
+}
+
+function appendChatMessage(message) {
+  const container = $("#chatMessages");
+  if (!container || !isActiveChatMessage(message)) return;
+  container.querySelector(".chat-empty")?.remove();
+  if (container.querySelector(`[data-chat-message-id="${CSS.escape(message.id)}"], [data-chat-key="${CSS.escape(encodeURIComponent(chatMessageKey(message)))}"]`)) return;
+  container.insertAdjacentHTML("beforeend", chatBubbleMarkup(message));
+  container.scrollTop = container.scrollHeight;
+}
+
 async function renderChat() {
   const container = $("#chatMessages");
   const client = getSupabaseClient();
@@ -620,15 +650,69 @@ async function renderChat() {
     console.warn("No pudimos cargar el chat:", error.message);
     return;
   }
-  container.innerHTML = data?.length
-    ? data.map(message => `<div class="chat-bubble${message.sender_id === authenticatedUser.id ? " mine" : ""}">${escapeHtml(message.content)}<time datetime="${escapeHtml(message.created_at)}">${escapeHtml(formatChatTime(message.created_at))}</time></div>`).join("")
+  const confirmed = data || [];
+  const confirmedContent = new Set(confirmed.filter(message => message.sender_id === authenticatedUser.id).map(message => message.content));
+  chatOptimisticMessages = chatOptimisticMessages.filter(message => !confirmedContent.has(message.content));
+  const messages = [...confirmed, ...chatOptimisticMessages];
+  container.innerHTML = messages.length
+    ? messages.map(chatBubbleMarkup).join("")
     : `<div class="chat-empty">Este es el comienzo de su conversación. Di hola.</div>`;
   container.scrollTop = container.scrollHeight;
+}
+
+function getChatTopic() {
+  return [authenticatedUser?.id, activeChatFriend?.id].filter(Boolean).sort().join("-");
+}
+
+function hideChatTyping() {
+  const indicator = $("#chatTyping");
+  if (indicator) indicator.hidden = true;
+  window.clearTimeout(chatTypingHideTimer);
+}
+
+function showChatTyping(name) {
+  const indicator = $("#chatTyping");
+  if (!indicator) return;
+  indicator.querySelector("b").textContent = name;
+  indicator.hidden = false;
+  window.clearTimeout(chatTypingHideTimer);
+  chatTypingHideTimer = window.setTimeout(hideChatTyping, 1800);
+}
+
+function startChatUpdates() {
+  const client = getSupabaseClient();
+  if (!client || !authenticatedUser || !activeChatFriend) return;
+  const topic = getChatTopic();
+  chatChannel = client.channel(`eclipse-chat-${topic}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "friend_messages" }, payload => {
+      if (!isActiveChatMessage(payload.new)) return;
+      if (chatLiveMessageKeys.delete(chatMessageKey(payload.new))) return;
+      if (payload.new.sender_id === authenticatedUser.id) {
+        chatOptimisticMessages = chatOptimisticMessages.filter(message => message.content !== payload.new.content);
+        renderChat();
+      } else appendChatMessage(payload.new);
+    })
+    .on("broadcast", { event: "message" }, ({ payload }) => {
+      const message = payload?.message;
+      if (!message || message.sender_id !== activeChatFriend?.id || !isActiveChatMessage(message)) return;
+      chatLiveMessageKeys.add(chatMessageKey(message));
+      appendChatMessage(message);
+    })
+    .on("broadcast", { event: "typing" }, ({ payload }) => {
+      if (payload?.senderId === activeChatFriend?.id) showChatTyping(payload.name || "Tu friend");
+    })
+    .subscribe();
 }
 
 function stopChatUpdates() {
   if (chatRefreshTimer) window.clearInterval(chatRefreshTimer);
   chatRefreshTimer = null;
+  window.clearTimeout(chatTypingTimer);
+  chatTypingTimer = null;
+  chatLiveMessageKeys.clear();
+  hideChatTyping();
+  if (chatChannel) getSupabaseClient()?.removeChannel(chatChannel);
+  chatChannel = null;
 }
 
 function openFriendChat(friend) {
@@ -637,11 +721,10 @@ function openFriendChat(friend) {
   $("#chatTitle").textContent = displayName(friend.display_name, "FRIEND").name.toUpperCase();
   $("#chatMessages").innerHTML = `<div class="chat-empty">Cargando conversación…</div>`;
   openSheet("chatSheet");
+  chatOptimisticMessages = [];
   renderChat();
   stopChatUpdates();
-  chatRefreshTimer = window.setInterval(() => {
-    if ($("#chatSheet")?.classList.contains("open")) renderChat();
-  }, 5000);
+  startChatUpdates();
 }
 
 function openSearchPersonProfile(person) {
@@ -1880,6 +1963,23 @@ function bindEvents() {
     const client = getSupabaseClient();
     if (!client) return showToast("Configura Supabase primero.");
     const button = $("#chatComposer button");
+    const optimisticMessage = {
+      id: `pending-${crypto.randomUUID?.() || Date.now()}`,
+      sender_id: authenticatedUser.id,
+      recipient_id: activeChatFriend.id,
+      content,
+      created_at: new Date().toISOString(),
+      optimistic: true
+    };
+    chatOptimisticMessages.push(optimisticMessage);
+    appendChatMessage(optimisticMessage);
+    chatChannel?.send({
+      type: "broadcast",
+      event: "message",
+      payload: { message: { ...optimisticMessage, optimistic: false } }
+    });
+    input.value = "";
+    input.style.height = "";
     button.disabled = true;
     const { error } = await client.from("friend_messages").insert({
       sender_id: authenticatedUser.id,
@@ -1887,9 +1987,20 @@ function bindEvents() {
       content
     });
     button.disabled = false;
-    if (error) return showToast(error.message);
-    input.value = "";
-    renderChat();
+    if (error) {
+      chatOptimisticMessages = chatOptimisticMessages.filter(message => message.id !== optimisticMessage.id);
+      renderChat();
+      return showToast(error.message);
+    }
+  });
+  $("#chatMessageInput")?.addEventListener("input", event => {
+    if (!chatChannel || !activeChatFriend || !authenticatedUser || !event.currentTarget.value.trim()) return;
+    if (chatTypingTimer) return;
+    chatChannel.send({ type: "broadcast", event: "typing", payload: {
+      senderId: authenticatedUser.id,
+      name: displayName(settings.profileName || "", "Tu friend").name
+    } });
+    chatTypingTimer = window.setTimeout(() => { chatTypingTimer = null; }, 750);
   });
   $("#showFriendQr").addEventListener("click", async () => {
     const code = getFriendCode();

@@ -2,7 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f6f6f2" />
     <title>Eclipse — Tu música, a tu manera</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -458,6 +458,7 @@
       <div class="sheet-grabber"></div>
       <header class="sheet-header"><button class="close-sheet" type="button" data-close-sheet aria-label="Cerrar chat"><i data-lucide="chevron-down"></i></button><span id="chatTitle">CHAT</span><span></span></header>
       <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
+      <p class="chat-typing" id="chatTyping" aria-live="polite" hidden><span></span><span></span><span></span> <b></b> está escribiendo…</p>
       <form class="chat-composer" id="chatComposer">
         <textarea id="chatMessageInput" maxlength="1000" rows="1" placeholder="Escribe un mensaje…" aria-label="Mensaje"></textarea>
         <button type="submit" aria-label="Enviar mensaje"><i data-lucide="send"></i></button>

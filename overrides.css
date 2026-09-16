@@ -139,6 +139,10 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 .chat-composer { display: grid; grid-template-columns: 1fr 38px; gap: 8px; align-items: end; flex: none; padding-top: 10px; border-top: 1px solid var(--line); }
 .chat-composer textarea { width: 100%; min-height: 39px; max-height: 100px; resize: none; padding: 10px 11px; border: 1px solid var(--line); border-radius: 13px; background: var(--paper-soft); color: var(--ink); outline: 0; font-size: 12px; }
 .chat-composer button { display: grid; place-items: center; width: 38px; height: 38px; border: 0; border-radius: 12px; background: var(--ink); color: var(--paper); }.chat-composer button:disabled { opacity: .45; cursor: wait; }.chat-composer svg { width: 16px; }
+.chat-typing { display: flex; align-items: center; min-height: 20px; gap: 3px; margin: -5px 1px 5px; color: var(--muted); font-size: 10px; font-style: italic; }
+.chat-typing span { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: chat-typing-dot 1s infinite ease-in-out; }
+.chat-typing span:nth-child(2) { animation-delay: .14s; }.chat-typing span:nth-child(3) { animation-delay: .28s; }.chat-typing b { margin-left: 3px; font-style: normal; }
+@keyframes chat-typing-dot { 0%, 60%, 100% { transform: translateY(0); opacity: .35; } 30% { transform: translateY(-3px); opacity: 1; } }
 @keyframes auth-pop-in { from { opacity: 0; transform: scale(.82) translateY(18px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes auth-pop-out { 45% { opacity: 1; transform: scale(1.06); } to { opacity: 0; transform: scale(.7) translateY(-28px); } }
 
@@ -563,6 +567,29 @@ html[data-theme="dark"] .daily-card { box-shadow: 0 14px 28px rgba(0, 0, 0, .28)
   .sheet { max-height: min(88dvh, 760px); padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
   .tab-bar { padding-bottom: calc(7px + env(safe-area-inset-bottom)); height: calc(62px + env(safe-area-inset-bottom)); }
   .mini-player { bottom: calc(58px + env(safe-area-inset-bottom)); }
+}
+
+/* Android browsers often report a zero safe-area while their system navigation
+   still covers the last pixels of the page. Reserve a small minimum gutter. */
+@media (max-width: 700px) {
+  #phone { --mobile-bottom-gutter: max(env(safe-area-inset-bottom), 32px); }
+  #phone .view,
+  #phone.phone[data-interface-mode="desktop"] .view,
+  #phone.phone[data-interface-mode="mobile"] .view {
+    inset-bottom: calc(67px + var(--mobile-bottom-gutter));
+    padding-bottom: 30px;
+  }
+  #phone .tab-bar,
+  #phone.phone[data-interface-mode="desktop"] .tab-bar,
+  #phone.phone[data-interface-mode="mobile"] .tab-bar {
+    height: calc(62px + var(--mobile-bottom-gutter));
+    padding-bottom: calc(7px + var(--mobile-bottom-gutter));
+  }
+  #phone .mini-player,
+  #phone.phone[data-interface-mode="desktop"] .mini-player,
+  #phone.phone[data-interface-mode="mobile"] .mini-player {
+    bottom: calc(58px + var(--mobile-bottom-gutter));
+  }
 }
 
 /* Desktop application layout */
