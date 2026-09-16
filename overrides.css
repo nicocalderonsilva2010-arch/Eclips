@@ -582,8 +582,11 @@ html[data-theme="dark"] .daily-card { box-shadow: 0 14px 28px rgba(0, 0, 0, .28)
   #phone .tab-bar,
   #phone.phone[data-interface-mode="desktop"] .tab-bar,
   #phone.phone[data-interface-mode="mobile"] .tab-bar {
-    height: calc(62px + var(--mobile-bottom-gutter));
-    padding-bottom: calc(7px + var(--mobile-bottom-gutter));
+    /* Move the entire control bar above Android's system navigation; padding
+       alone still leaves its icons in the covered zone on some browsers. */
+    bottom: var(--mobile-bottom-gutter);
+    height: 62px;
+    padding-bottom: 7px;
   }
   #phone .mini-player,
   #phone.phone[data-interface-mode="desktop"] .mini-player,
