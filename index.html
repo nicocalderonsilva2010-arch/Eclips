@@ -9,12 +9,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="overrides.css?v=20260916-chat-media" />
+    <link rel="stylesheet" href="overrides.css?v=20260919-profile-modal-fix" />
     <script src="https://unpkg.com/lucide@latest" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
     <script src="supabase-config.js"></script>
-    <script src="script.js?v=20260916-chat-media" defer></script>
+    <script src="script.js?v=20260919-banner-editor" defer></script>
   </head>
   <body>
     <section class="auth-gate" id="authGate" aria-labelledby="authTitle" hidden>
@@ -230,7 +230,7 @@
               <button class="tab" type="button" data-target="search"><i data-lucide="search"></i><span>Buscar</span></button>
               <button class="tab" id="tabUpload" type="button"><i data-lucide="plus-circle"></i><span>Subir</span></button>
               <button class="tab" type="button" data-target="library"><i data-lucide="library"></i><span>Biblioteca</span></button>
-              <button class="tab" type="button" data-target="friends"><i data-lucide="users-round"></i><span>Friends</span></button>
+              <button class="tab" type="button" data-target="friends"><i data-lucide="users-round"></i><span>Friends</span><i class="chat-unread-dot" id="chatUnreadDot" hidden aria-label="Tienes mensajes sin leer"></i></button>
               <button class="tab tab-sheet" id="tabProfile" type="button" data-sheet="profileSheet"><i data-lucide="user-round"></i><span>Perfil</span></button>
               <button class="about-nav-link" id="openAbout" type="button"><i data-lucide="info"></i><span>Sobre Eclipse</span></button>
             </nav>
@@ -243,6 +243,16 @@
     </main>
 
     <div class="sheet-backdrop" id="sheetBackdrop"></div>
+
+    <section class="photo-editor" id="photoEditor" aria-hidden="true" aria-label="Editar imagen" role="dialog" aria-modal="true">
+      <div class="photo-editor-card">
+        <header class="photo-editor-header"><h2>Editar imagen</h2><button id="closePhotoEditor" type="button" aria-label="Cerrar editor"><i data-lucide="x"></i></button></header>
+        <div class="photo-editor-stage" id="photoEditorStage" aria-label="Arrastra la imagen para encuadrarla"><img id="photoEditorImage" alt="Vista previa de tu foto de perfil" draggable="false" /><span class="photo-editor-crop" aria-hidden="true"></span></div>
+        <div class="photo-editor-controls"><i data-lucide="zoom-out"></i><input id="photoEditorZoom" type="range" min="100" max="180" value="100" aria-label="Zoom de la foto" /><i data-lucide="zoom-in"></i></div>
+        <div class="photo-editor-hint"><i data-lucide="move"></i><span>Arrastra para ajustar el encuadre</span><label for="profileInput"><i data-lucide="image-plus"></i> Cambiar</label></div>
+        <footer class="photo-editor-footer"><button id="resetPhotoEditor" type="button">Restablecer</button><span></span><button id="cancelPhotoEditor" type="button">Cancelar</button><button id="applyPhotoEditor" type="button">Aplicar</button></footer>
+      </div>
+    </section>
 
     <aside class="sheet player-sheet" id="playerSheet" aria-hidden="true" aria-label="Reproductor">
       <div class="sheet-grabber"></div>
@@ -333,7 +343,7 @@
         <div class="profile-artist-preview" id="profileArtistsPreview"></div>
         <div class="profile-gallery-preview" id="profileGalleryPreview"></div>
       </section>
-      <details class="profile-media-tools" aria-label="Ajustar imagen de perfil y banner">
+      <details class="profile-media-tools" aria-label="Ajustar imagen de perfil y banner" hidden>
         <summary><span><i data-lucide="sliders-horizontal"></i> Ajustar foto y banner</span><small>Zoom y posición</small></summary>
         <div class="profile-media-tools-content">
         <div class="profile-tool-heading"><strong>Foto de perfil</strong><button class="clear-button" id="resetProfilePhoto" type="button">Restaurar</button></div>

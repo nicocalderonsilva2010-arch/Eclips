@@ -58,8 +58,8 @@ const THEME_TOKENS = {
     "--muted": "#d7a4ab", "--line": "rgba(255, 226, 229, 0.14)", "--glass": "rgba(37, 11, 18, 0.88)", "--accent": "#e85164"
   },
   dark: {
-    "--paper": "#0b1220", "--paper-soft": "#121d2d", "--ink": "#edf5ff",
-    "--muted": "#9dafc4", "--line": "rgba(189, 215, 242, 0.13)", "--glass": "rgba(11, 18, 32, 0.78)", "--accent": "#6cc5e8"
+    "--paper": "#171717", "--paper-soft": "#232323", "--ink": "#f4f2ed",
+    "--muted": "#aaa8a2", "--line": "rgba(255, 255, 255, 0.12)", "--glass": "rgba(23, 23, 23, 0.82)", "--accent": "#bcb6a7"
   }
 };
 
@@ -130,6 +130,9 @@ let socialRefreshTimer = null;
 let musicFolderHandle = null;
 let peopleSearchRequest = 0;
 let interfaceResizeTimer;
+let photoEditorDraft = null;
+let photoEditorDrag = null;
+let unreadChatSenders = new Set();
 // The onboarding flow begins with registration, then requires a sign-in.
 let authMode = "register";
 
@@ -631,7 +634,7 @@ function chatMediaMarkup(message) {
   const name = escapeHtml(message.media_name || "Archivo adjunto");
   if (message.media_type?.startsWith("image/")) return `<img class="chat-media chat-image" src="${url}" alt="${name}" loading="lazy" />`;
   if (message.media_type?.startsWith("video/")) return `<video class="chat-media chat-video" src="${url}" controls playsinline preload="metadata"></video>`;
-  if (message.media_type?.startsWith("audio/")) return `<audio class="chat-audio" src="${url}" controls preload="metadata"></audio>`;
+  if (message.media_type?.startsWith("audio/")) return `<div class="voice-note"><button class="voice-play" type="button" data-voice-toggle aria-label="Reproducir nota de voz">${icon("play")}</button><span class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><small>Nota de voz</small><audio class="chat-audio" src="${url}" preload="metadata"></audio></div>`;
   return `<a class="chat-file" href="${url}" target="_blank" rel="noopener">${name}</a>`;
 }
 
@@ -646,6 +649,40 @@ function appendChatMessage(message) {
   if (container.querySelector(`[data-chat-message-id="${CSS.escape(message.id)}"], [data-chat-key="${CSS.escape(encodeURIComponent(chatMessageKey(message)))}"]`)) return;
   container.insertAdjacentHTML("beforeend", chatBubbleMarkup(message));
   container.scrollTop = container.scrollHeight;
+  drawIcons();
+  markActiveChatRead();
+}
+
+function renderUnreadChatIndicator() {
+  const dot = $("#chatUnreadDot");
+  if (!dot) return;
+  dot.hidden = unreadChatSenders.size === 0;
+  dot.setAttribute("aria-label", unreadChatSenders.size === 1 ? "Tienes un chat sin leer" : "Tienes " + unreadChatSenders.size + " chats sin leer");
+}
+
+async function refreshUnreadChats() {
+  const client = getSupabaseClient();
+  if (!client || !authenticatedUser) return;
+  const { data, error } = await client.from("friend_messages")
+    .select("sender_id")
+    .eq("recipient_id", authenticatedUser.id)
+    .is("read_at", null);
+  if (error) return;
+  unreadChatSenders = new Set((data || []).map(message => message.sender_id));
+  renderUnreadChatIndicator();
+}
+
+async function markActiveChatRead() {
+  const client = getSupabaseClient();
+  if (!client || !authenticatedUser || !activeChatFriend) return;
+  const { error } = await client.from("friend_messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("sender_id", activeChatFriend.id)
+    .eq("recipient_id", authenticatedUser.id)
+    .is("read_at", null);
+  if (error) return;
+  unreadChatSenders.delete(activeChatFriend.id);
+  renderUnreadChatIndicator();
 }
 
 async function sendChatMessage({ content = "", mediaUrl = "", mediaType = "", mediaName = "" }) {
@@ -748,6 +785,7 @@ async function renderChat() {
     ? messages.map(chatBubbleMarkup).join("")
     : `<div class="chat-empty">Este es el comienzo de su conversación. Di hola.</div>`;
   container.scrollTop = container.scrollHeight;
+  drawIcons();
 }
 
 function getChatTopic() {
@@ -813,8 +851,8 @@ function openFriendChat(friend) {
   $("#chatMessages").innerHTML = `<div class="chat-empty">Cargando conversación…</div>`;
   openSheet("chatSheet");
   chatOptimisticMessages = [];
-  renderChat();
-  stopChatUpdates();
+  renderChat().then(markActiveChatRead);
+ stopChatUpdates();
   startChatUpdates();
 }
 
@@ -921,6 +959,7 @@ async function renderFriends() {
   }
   $("#friendsCount").textContent = String(accepted.length);
   if ($("#sideFriendsCount")) $("#sideFriendsCount").textContent = String(accepted.length);
+  await refreshUnreadChats();
   const profileById = new Map(profiles.map(profile => [profile.id, profile]));
   friendProfiles = profileById;
   const friendsMarkup = friendConnections.map(({ connectionId, profileId }) => {
@@ -952,9 +991,10 @@ function startSocialUpdates() {
   const client = getSupabaseClient();
   if (!client || !authenticatedUser) return;
   client.removeAllChannels?.();
-  client.channel(`eclipse-social-${authenticatedUser.id}`)
-    .on("postgres_changes", { event: "*", schema: "public", table: "friendships", filter: `friend_id=eq.${authenticatedUser.id}` }, () => renderFriends())
-    .subscribe();
+ client.channel(`eclipse-social-${authenticatedUser.id}`)
+   .on("postgres_changes", { event: "*", schema: "public", table: "friendships", filter: `friend_id=eq.${authenticatedUser.id}` }, () => renderFriends())
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "friend_messages", filter: `recipient_id=eq.${authenticatedUser.id}` }, () => refreshUnreadChats())
+   .subscribe();
 }
 
 function openFriendProfile(friend) {
@@ -1694,6 +1734,72 @@ function readImage(file, callback) {
   reader.readAsDataURL(file);
 }
 
+function renderPhotoEditor() {
+  if (!photoEditorDraft) return;
+  const image = $("#photoEditorImage");
+  image.src = photoEditorDraft.image;
+  image.style.setProperty("--editor-scale", photoEditorDraft.scale);
+  image.style.setProperty("--editor-x", `${photoEditorDraft.x}%`);
+  image.style.setProperty("--editor-y", `${photoEditorDraft.y}%`);
+  $("#photoEditorZoom").value = String(Math.round(photoEditorDraft.scale * 100));
+}
+
+function openPhotoEditor(image, kind = "avatar") {
+  const isBanner = kind === "banner";
+  photoEditorDraft = {
+    image,
+    kind,
+    scale: isBanner ? settings.profileBannerScale : 1,
+    x: isBanner ? settings.profileBannerPositionX : 50,
+    y: isBanner ? settings.profileBannerPositionY : 50
+  };
+  renderPhotoEditor();
+  const editor = $("#photoEditor");
+  editor.classList.toggle("is-banner", isBanner);
+  $(".photo-editor-header h2").textContent = isBanner ? "Editar banner" : "Editar imagen";
+  $(".photo-editor-hint label").htmlFor = isBanner ? "profileBannerInput" : "profileInput";
+  editor.classList.add("open");
+  editor.setAttribute("aria-hidden", "false");
+  document.body.classList.add("photo-editor-open");
+  requestAnimationFrame(() => $("#photoEditorZoom").focus());
+}
+
+function closePhotoEditor() {
+  $("#photoEditor").classList.remove("open");
+  $("#photoEditor").setAttribute("aria-hidden", "true");
+  document.body.classList.remove("photo-editor-open");
+  photoEditorDraft = null;
+  photoEditorDrag = null;
+  $("#profileInput").value = "";
+  $("#profileBannerInput").value = "";
+}
+
+function applyPhotoEditor() {
+  if (!photoEditorDraft) return;
+  const previous = { ...settings };
+  if (photoEditorDraft.kind === "banner") {
+    settings.profileBanner = photoEditorDraft.image;
+    settings.profileBannerScale = photoEditorDraft.scale;
+    settings.profileBannerPositionX = photoEditorDraft.x;
+    settings.profileBannerPositionY = photoEditorDraft.y;
+  } else {
+    settings.profileImage = photoEditorDraft.image;
+    settings.profileImageScale = photoEditorDraft.scale;
+    settings.profileImagePositionX = photoEditorDraft.x;
+    settings.profileImagePositionY = photoEditorDraft.y;
+  }
+  if (!save(STORAGE.settings, settings)) {
+    settings = previous;
+    applySettings();
+    return showToast("La foto es muy grande para guardarla. Prueba otra más ligera.");
+  }
+  applySettings();
+  syncCloudProfile();
+  const successMessage = photoEditorDraft.kind === "banner" ? "Tu banner está listo." : "Tu foto de perfil está lista.";
+  closePhotoEditor();
+  showToast(successMessage);
+}
+
 function optimizeImage(dataUrl) {
   return new Promise(resolve => {
     const image = new Image();
@@ -2154,11 +2260,12 @@ function bindEvents() {
   $("#resetPalette").addEventListener("click", () => { settings.theme = "mono"; save(STORAGE.settings, settings); applySettings(); });
   ["#accentColor", "#paperColor"].forEach(selector => $(selector).addEventListener("input", event => document.documentElement.style.setProperty(selector === "#accentColor" ? "--accent" : "--paper", event.target.value)));
   $("#changeProfileBanner").addEventListener("click", () => $("#profileBannerInput").click());
+  $("#profileBanner").addEventListener("click", event => {
+    if (event.target.closest("#changeProfileBanner") || !settings.profileBanner) return;
+    openPhotoEditor(settings.profileBanner, "banner");
+  });
   $("#profileBannerInput").addEventListener("change", event => readImage(event.target.files[0], image => {
-    settings.profileBanner = image;
-    save(STORAGE.settings, settings);
-    applySettings();
-    syncCloudProfile();
+    openPhotoEditor(image, "banner");
   }));
   $$(".chip").forEach(chip => chip.addEventListener("click", () => {
     activeFilter = chip.dataset.filter;
@@ -2232,6 +2339,8 @@ function bindEvents() {
     }
   });
   $("#profileInput").addEventListener("change", event => readImage(event.target.files[0], image => {
+    openPhotoEditor(image);
+    return;
     const previous = settings.profileImage;
     settings.profileImage = image;
     if (save(STORAGE.settings, settings)) {
@@ -2244,6 +2353,35 @@ function bindEvents() {
       showToast("La foto es muy grande para guardarla. Prueba otra más ligera.");
     }
   }));
+  $("#closePhotoEditor").addEventListener("click", closePhotoEditor);
+  $("#cancelPhotoEditor").addEventListener("click", closePhotoEditor);
+  $("#applyPhotoEditor").addEventListener("click", applyPhotoEditor);
+  $("#resetPhotoEditor").addEventListener("click", () => {
+    if (!photoEditorDraft) return;
+    photoEditorDraft.scale = 1;
+    photoEditorDraft.x = 50;
+    photoEditorDraft.y = 50;
+    renderPhotoEditor();
+  });
+  $("#photoEditorZoom").addEventListener("input", event => {
+    if (!photoEditorDraft) return;
+    photoEditorDraft.scale = Number(event.target.value) / 100;
+    renderPhotoEditor();
+  });
+  $("#photoEditorStage").addEventListener("pointerdown", event => {
+    if (!photoEditorDraft) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    photoEditorDrag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: photoEditorDraft.x, y: photoEditorDraft.y };
+  });
+  $("#photoEditorStage").addEventListener("pointermove", event => {
+    if (!photoEditorDrag || event.pointerId !== photoEditorDrag.pointerId || !photoEditorDraft) return;
+    const stage = event.currentTarget.getBoundingClientRect();
+    const sensitivity = 100 / Math.max(1, photoEditorDraft.scale);
+    photoEditorDraft.x = Math.min(100, Math.max(0, photoEditorDrag.x - ((event.clientX - photoEditorDrag.startX) / stage.width) * sensitivity));
+    photoEditorDraft.y = Math.min(100, Math.max(0, photoEditorDrag.y - ((event.clientY - photoEditorDrag.startY) / stage.height) * sensitivity));
+    renderPhotoEditor();
+  });
+  ["pointerup", "pointercancel"].forEach(type => $("#photoEditorStage").addEventListener(type, () => { photoEditorDrag = null; }));
   $("#musicInput").addEventListener("change", event => {
     uploadMusic(event.target.files);
     event.target.value = "";
@@ -2380,6 +2518,22 @@ function bindEvents() {
   });
 
   document.addEventListener("click", event => {
+    const voiceButton = event.target.closest("[data-voice-toggle]");
+    if (voiceButton) {
+      const note = voiceButton.closest(".voice-note");
+      const voice = note?.querySelector("audio");
+      if (!voice) return;
+      if (voice.paused) {
+        $$(".voice-note audio").forEach(item => item !== voice && item.pause());
+        voice.play().catch(() => showToast("No pudimos reproducir esta nota de voz."));
+        note.classList.add("is-playing");
+      } else {
+        voice.pause();
+        note.classList.remove("is-playing");
+      }
+      voice.onended = () => note.classList.remove("is-playing");
+      return;
+    }
     const personButton = event.target.closest("[data-open-person]");
     if (personButton) {
       openSearchPersonProfile(searchPeople.get(personButton.dataset.openPerson));
@@ -2419,7 +2573,10 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeSheets();
+    if (event.key === "Escape") {
+      if ($("#photoEditor").classList.contains("open")) closePhotoEditor();
+      else closeSheets();
+    }
     if (event.key === " " && !event.target.matches("input, textarea, select, button")) {
       event.preventDefault();
       togglePlay();

@@ -144,6 +144,7 @@ on public.friend_messages (sender_id, recipient_id, created_at);
 alter table public.friend_messages add column if not exists media_url text;
 alter table public.friend_messages add column if not exists media_type text;
 alter table public.friend_messages add column if not exists media_name text;
+alter table public.friend_messages add column if not exists read_at timestamptz;
 alter table public.friend_messages alter column content set default '';
 alter table public.friend_messages drop constraint if exists friend_messages_content_check;
 alter table public.friend_messages drop constraint if exists friend_messages_payload_check;
@@ -180,7 +181,7 @@ using (
 );
 
 alter table public.friend_messages enable row level security;
-grant select, insert on public.friend_messages to authenticated;
+grant select, insert, update on public.friend_messages to authenticated;
 
 drop policy if exists "Friends can view their messages" on public.friend_messages;
 create policy "Friends can view their messages"
@@ -207,6 +208,12 @@ with check (
         or (friend_id = sender_id and user_id = recipient_id))
   )
 );
+
+drop policy if exists "Recipients can mark messages as read" on public.friend_messages;
+create policy "Recipients can mark messages as read"
+on public.friend_messages for update to authenticated
+using (recipient_id = (select auth.uid()))
+with check (recipient_id = (select auth.uid()));
 
 -- Habilita cambios en tiempo real para el chat. Si ya fue agregado, no hace nada.
 do $$ begin

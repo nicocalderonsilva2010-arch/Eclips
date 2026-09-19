@@ -33,6 +33,7 @@ html[data-theme="dark"] .screen::before { background: rgba(23,23,23,.76); }
 .profile-large { overflow: hidden; border-radius: 50%; }
 .profile-large img { transform: scale(var(--avatar-scale, 1)); transform-origin: var(--avatar-x, 50%) var(--avatar-y, 50%); object-position: var(--avatar-x, 50%) var(--avatar-y, 50%); }
 .profile-banner { background-size: var(--banner-size, cover); background-position: var(--banner-x, 50%) var(--banner-y, 50%); background-repeat: no-repeat; }
+.profile-banner[id] { cursor: pointer; }
 .desktop-customize { display: none; }
 .auth-gate { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 20px; background: radial-gradient(circle at 20% 10%, #44483d 0, transparent 38%), #121310; }
 .auth-gate[hidden] { display: none; }
@@ -416,16 +417,15 @@ html[data-theme="wine"] .home-companion { background: linear-gradient(150deg, #5
   .phone[data-interface-mode="desktop"] .mini-player, .phone[data-interface-mode="mobile"] .mini-player { left: 10px; right: 10px; bottom: 58px; width: auto; height: 55px; }
 }
 
-/* Night theme: visible, calm rain over a blue-black night sky. */
+/* Night theme: neutral, quiet and easy to read. */
 html[data-theme="dark"] #appSurface {
   background:
-    radial-gradient(circle at 78% -8%, rgba(73, 157, 206, .18), transparent 31%),
-    radial-gradient(circle at 4% 100%, rgba(45, 76, 119, .18), transparent 38%),
-    linear-gradient(155deg, #101927 0%, #0a111d 52%, #060a12 100%);
+    radial-gradient(circle at 78% -8%, rgba(188, 182, 167, .12), transparent 31%),
+    linear-gradient(155deg, #202020 0%, #151515 54%, #101010 100%);
 }
 html[data-theme="dark"] #appSurface::before {
   z-index: 0;
-  background: linear-gradient(180deg, rgba(6, 12, 21, .18), rgba(6, 12, 21, .56));
+  background: linear-gradient(180deg, rgba(15, 15, 15, .08), rgba(10, 10, 10, .34));
   backdrop-filter: none;
 }
 /* Preserve the absolute positioning of views, player and mobile navigation. */
@@ -465,6 +465,88 @@ html[data-theme="dark"] .notification-button {
   box-shadow: none;
 }
 html[data-theme="dark"] .daily-card { box-shadow: 0 14px 28px rgba(0, 0, 0, .28); }
+
+/* The night palette stays still: the old rain layer distracted from the music. */
+html[data-theme="dark"] #appSurface::after { content: none !important; animation: none !important; background: none !important; }
+html[data-theme="dark"] .quick-action,
+html[data-theme="dark"] .search-field,
+html[data-theme="dark"] .library-album-row,
+html[data-theme="dark"] .add-friend-card,
+html[data-theme="dark"] .friends-list,
+html[data-theme="dark"] .notification-button { background: rgba(35, 35, 35, .72); }
+
+/* Profile photo editor: preview first, then commit only on Apply. */
+.photo-editor { position: fixed; z-index: 120; inset: 0; display: grid; place-items: center; padding: 18px; visibility:hidden; background: rgba(0,0,0,.66); opacity: 0; pointer-events: none; transition: opacity .2s ease, visibility 0s linear .2s; }
+.photo-editor.open { visibility:visible; opacity: 1; pointer-events: auto; transition-delay:0s; }
+.photo-editor-card { width: min(100%, 430px); padding: 20px; border: 1px solid #ffffff12; border-radius: 18px; background: #111113; color: #f5f5f6; box-shadow: 0 26px 80px #000a; transform: translateY(12px) scale(.98); transition: transform .22s ease; }
+.photo-editor.open .photo-editor-card { transform: translateY(0) scale(1); }
+.photo-editor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }.photo-editor-header h2 { font-family: "DM Sans", Arial, sans-serif; font-size: 19px; letter-spacing: -.03em; }.photo-editor-header button { display:grid; place-items:center; width:30px; height:30px; padding:0; border:0; background:transparent; color:#bbb; }.photo-editor-header svg { width:22px; }
+.photo-editor-stage { position: relative; height: min(62vw, 330px); min-height: 245px; overflow: hidden; border-radius: 12px; background: #222226; cursor: grab; touch-action: none; user-select: none; }.photo-editor-stage:active { cursor: grabbing; }
+.photo-editor-stage img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:var(--editor-x, 50%) var(--editor-y, 50%); transform:scale(var(--editor-scale, 1)); transform-origin:var(--editor-x, 50%) var(--editor-y, 50%); pointer-events:none; }.photo-editor-crop { position:absolute; top:50%; left:50%; width:min(72%, 236px); aspect-ratio:1; transform:translate(-50%,-50%); border:4px solid #fff; border-radius:50%; box-shadow:0 0 0 999px rgba(0,0,0,.45); pointer-events:none; }
+.photo-editor.is-banner .photo-editor-stage { height:min(46vw, 245px); min-height:190px; }.photo-editor.is-banner .photo-editor-crop { width:84%; max-width:350px; aspect-ratio:16 / 6; border-radius:10px; }
+.photo-editor-controls { display:grid; grid-template-columns:18px 1fr 18px; align-items:center; gap:10px; margin:20px auto 14px; width:min(100%, 230px); color:#c9c9cb; }.photo-editor-controls svg { width:16px; }.photo-editor-controls input { width:100%; accent-color:#f3f3f5; }
+.photo-editor-hint { display:flex; align-items:center; gap:7px; color:#a9a9ad; font-size:11px; }.photo-editor-hint > svg { width:14px; }.photo-editor-hint label { margin-left:auto; display:inline-flex; align-items:center; gap:5px; color:#e3e3e5; cursor:pointer; }.photo-editor-hint label svg { width:14px; }
+.photo-editor-footer { display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:8px; margin-top:22px; }.photo-editor-footer button { padding:10px 13px; border:1px solid #414146; border-radius:9px; background:#222226; color:#eeeef0; font-size:13px; font-weight:700; }.photo-editor-footer #resetPhotoEditor { padding-left:0; border:0; background:transparent; color:#9aa7ff; }.photo-editor-footer #applyPhotoEditor { border-color:#6270ff; background:#5d69ef; color:white; }
+body.photo-editor-open { overflow:hidden; }
+
+/* Unread chat state: discreet, but impossible to miss. */
+.tab { position: relative; }
+.chat-unread-dot { position:absolute; top:8px; right:12px; display:block; width:8px; height:8px; border:2px solid var(--paper); border-radius:50%; background:#e64b52; box-shadow:0 0 0 2px color-mix(in srgb, #e64b52 18%, transparent); }
+.chat-unread-dot[hidden] { display:none; }
+
+/* Library: collection cards instead of oversized empty rows. */
+.library-albums { grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:14px; }
+.library-album-row { position:relative; min-height:220px; display:flex; flex-direction:column; align-items:stretch; gap:0; overflow:hidden; padding:0; border-radius:18px; background:var(--paper-soft); box-shadow:0 10px 24px rgba(20,20,20,.055); transition:transform .2s ease, box-shadow .2s ease; }
+.library-album-row:hover { transform:translateY(-3px); box-shadow:0 16px 30px rgba(20,20,20,.11); }
+.library-album-row .album-cover { width:100%; height:auto; aspect-ratio:1.08; margin:0; border-radius:0; }
+.library-album-row > span { display:block; width:100%; padding:12px 13px 14px; text-align:left; }
+.library-album-row strong { font-size:13px; }.library-album-row small { margin-top:4px; font-size:10px; line-height:1.35; }
+.library-album-row > svg { position:absolute; right:11px; bottom:13px; width:15px; color:var(--muted); }
+.library-stats { max-width:720px; margin:2px 0 16px; padding:14px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.library-switcher { margin-bottom:18px; }
+@media (min-width:701px) {
+  .phone[data-interface-mode="desktop"] .library-albums { grid-template-columns:repeat(auto-fill, minmax(215px, 1fr)); max-width:1120px; gap:18px; }
+  .phone[data-interface-mode="desktop"] .library-album-row { min-height:285px; border-radius:21px; }
+  .phone[data-interface-mode="desktop"] .library-album-row .album-cover { aspect-ratio:1.05; }
+  .phone[data-interface-mode="desktop"] .library-album-row > span { padding:15px 16px 17px; }
+  .phone[data-interface-mode="desktop"] .library-album-row strong { font-size:15px; }
+  .phone[data-interface-mode="desktop"] .library-stats { width:min(100%, 720px); }
+}
+@media (max-width:700px) { .chat-unread-dot { top:4px; right:calc(50% - 19px); }.library-albums { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }.library-album-row { min-height:185px; border-radius:15px; } }
+
+/* Voice notes are their own message type, not a tiny browser widget. */
+.chat-audio { display:none; }
+.voice-note { display:grid; grid-template-columns:36px minmax(90px, 1fr) auto; align-items:center; gap:9px; min-width:210px; padding:2px 0 5px; }
+.voice-play { display:grid; place-items:center; width:36px; height:36px; padding:0; border:0; border-radius:50%; background:var(--ink); color:var(--paper); }
+.chat-bubble.mine .voice-play { background:var(--paper); color:var(--ink); }
+.voice-play svg { width:15px; fill:currentColor; }
+.voice-wave { display:flex; align-items:center; justify-content:space-between; gap:3px; height:28px; }
+.voice-wave i { width:3px; height:9px; border-radius:9px; background:var(--muted); opacity:.75; }.voice-wave i:nth-child(2n) { height:20px; }.voice-wave i:nth-child(3n) { height:14px; }.voice-wave i:nth-child(4n) { height:24px; }
+.chat-bubble.mine .voice-wave i { background:color-mix(in srgb, var(--paper) 78%, transparent); }
+.voice-note small { color:var(--muted); font-size:9px; white-space:nowrap; }.chat-bubble.mine .voice-note small { color:color-mix(in srgb, var(--paper) 72%, transparent); }
+.voice-note.is-playing .voice-wave i { animation:voice-wave .65s ease-in-out infinite alternate; }.voice-note.is-playing .voice-wave i:nth-child(2n) { animation-delay:.16s; }.voice-note.is-playing .voice-wave i:nth-child(3n) { animation-delay:.28s; }
+@keyframes voice-wave { to { transform:scaleY(.42); opacity:.45; } }
+
+/* Profiles are a focused overlay on desktop, like a featured media card. */
+@media (min-width:701px) {
+  .sheet-backdrop.visible { background:rgba(3,5,7,.38); backdrop-filter:blur(9px) saturate(.82); }
+  #friendProfileSheet { top:50%; bottom:auto; left:50%; width:min(880px, calc(100vw - 80px)); max-height:calc(100vh - 74px); padding:22px 28px 26px; border-radius:24px; background:var(--paper); box-shadow:0 32px 90px rgba(0,0,0,.48); opacity:0; visibility:hidden; pointer-events:none; transform:translate(-50%, -45%) scale(.96); transition:transform .25s ease, opacity .2s ease, visibility 0s linear .25s; }
+  #friendProfileSheet.open { opacity:1; visibility:visible; pointer-events:auto; transform:translate(-50%, -50%) scale(1); transition-delay:0s; }
+  #friendProfileSheet .sheet-grabber { display:none; }
+  #friendProfileSheet .sheet-header { margin-bottom:18px; }
+  #friendProfileSheet .friend-profile-banner { height:auto; aspect-ratio:16 / 9; border-radius:18px; }
+  #friendProfileSheet .friend-profile-intro { margin:-54px 25px 0; gap:16px; }
+  #friendProfileSheet .friend-profile-intro img { width:108px; height:108px; border-width:5px; }
+  #friendProfileSheet .friend-profile-intro h2 { font-size:31px; }
+  #friendProfileSheet .friend-profile-bio { max-width:620px; margin:24px 4px; font-size:13px; }
+  #friendProfileSheet .friend-profile-section { margin-top:20px; padding-top:18px; }
+  #friendProfileSheet .friend-profile-chat { width:auto; min-width:250px; float:right; margin:18px 0 0; }
+  #friendProfileSheet .friend-profile-note { clear:both; padding-top:18px; }
+}
+
+/* A calmer hierarchy for the first screen. */
+.view[data-view="home"] .app-header { padding-bottom: 4px; }.view[data-view="home"] .daily-card { position:relative; overflow:hidden; border:1px solid color-mix(in srgb, var(--paper) 20%, transparent); background:linear-gradient(120deg, var(--ink), color-mix(in srgb, var(--ink) 78%, var(--accent))); }.view[data-view="home"] .daily-card::after { content:""; position:absolute; width:130px; aspect-ratio:1; right:-46px; top:-54px; border:1px solid #fff3; border-radius:50%; }.view[data-view="home"] .quick-action { min-height:76px; border-radius:15px; box-shadow:0 7px 20px rgba(20,20,20,.035); }.view[data-view="home"] .chip-row { margin-top:5px; padding-bottom:2px; }
+@media (max-width:500px) { .photo-editor { padding:0; align-items:end; }.photo-editor-card { width:100%; border-radius:20px 20px 0 0; padding:20px 20px calc(20px + env(safe-area-inset-bottom)); }.photo-editor-stage { height:min(82vw, 330px); } }
 
 /* Project information and credits. */
 .about-nav-link { display: none; }
